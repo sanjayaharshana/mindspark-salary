@@ -18,11 +18,20 @@ class ReporterController extends Controller
     /**
      * Display a listing of reporter users.
      */
-    public function index()
+    public function index(Request $request)
     {
-        // Get users with reporter role
-        $reporters = User::role('reporter')->with('roles')->paginate(10);
-        return view('admin.reporters.index', compact('reporters'));
+        $query = User::role('reporter')->with('roles');
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('xelenic_id', 'like', "%{$search}%");
+            });
+        }
+        $reporters = $query->orderBy('created_at', 'desc')->paginate(15)->withQueryString();
+        $total = User::role('reporter')->count();
+        return view('admin.reporters.index', compact('reporters', 'total'));
     }
 
     /**

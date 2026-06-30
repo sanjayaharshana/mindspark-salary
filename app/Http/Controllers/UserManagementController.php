@@ -15,10 +15,27 @@ class UserManagementController extends Controller
         $this->middleware('auth');
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $users = User::with('roles')->paginate(10);
-        return view('admin.users.index', compact('users'));
+        $query = User::with('roles');
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('role')) {
+            $query->whereHas('roles', fn($q) => $q->where('name', $request->role));
+        }
+
+        $users   = $query->orderBy('created_at', 'desc')->paginate(15)->withQueryString();
+        $roles   = Role::orderBy('name')->get();
+        $total   = User::count();
+
+        return view('admin.users.index', compact('users', 'roles', 'total'));
     }
 
     public function create()

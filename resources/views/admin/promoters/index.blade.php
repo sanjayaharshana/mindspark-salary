@@ -1,6 +1,6 @@
 @extends('layouts.admin')
 
-@section('title', 'Promoters')
+@section('title', 'Promoter Management')
 @section('page-title', 'Promoter Details')
 
 @section('breadcrumbs')
@@ -9,711 +9,366 @@
 @endsection
 
 @section('content')
+<style>
+.pm-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:.5rem; }
+.pm-title { font-size:1.1rem; font-weight:700; color:#1f2937; margin:0; }
+.pm-subtitle { font-size:.75rem; color:#6b7280; margin:.1rem 0 0; }
 
-    <!-- Example in your Blade layout file -->
-<div class="card">
-    <div class="card-header">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h3>All Promoters</h3>
-            <div style="display: flex; gap: 0.5rem;">
-                @can('create promoters')
-                    <button type="button" class="btn btn-info" onclick="openCsvImportModal()">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                            <polyline points="14,2 14,8 20,8"></polyline>
-                            <line x1="16" y1="13" x2="8" y2="13"></line>
-                            <line x1="16" y1="17" x2="8" y2="17"></line>
-                            <polyline points="10,9 9,9 8,9"></polyline>
-                        </svg>
-                        Import CSV
-                    </button>
-                    <a href="{{ route('admin.promoters.create') }}" class="btn btn-success">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
-                            <line x1="12" y1="5" x2="12" y2="19"></line>
-                            <line x1="5" y1="12" x2="19" y2="12"></line>
-                        </svg>
-                        Add New Promoter
-                    </a>
-                @endcan
-            </div>
-        </div>
+.pm-stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:.625rem; margin-bottom:1rem; }
+.pm-stat { background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:.75rem 1rem; display:flex; align-items:center; gap:.75rem; }
+.pm-stat-icon { width:34px; height:34px; border-radius:8px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.pm-stat-val { font-size:1.25rem; font-weight:700; color:#1f2937; line-height:1; }
+.pm-stat-lbl { font-size:.7rem; color:#6b7280; margin-top:.1rem; }
+
+.pm-filters { background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:.75rem 1rem; margin-bottom:1rem; }
+.pm-filter-row { display:flex; gap:.625rem; flex-wrap:wrap; align-items:flex-end; }
+.pm-filter-group { display:flex; flex-direction:column; gap:.25rem; flex:1; min-width:150px; }
+.pm-filter-group label { font-size:.72rem; font-weight:600; color:#374151; text-transform:uppercase; letter-spacing:.04em; }
+.pm-input { padding:.45rem .7rem; border:1px solid #d1d5db; border-radius:6px; font-size:.82rem; color:#1f2937; background:#fff; outline:none; width:100%; transition:border-color .15s,box-shadow .15s; }
+.pm-input:focus { border-color:#f43f5e; box-shadow:0 0 0 3px rgba(244,63,94,.1); }
+
+.pm-btn { padding:.45rem 1rem; border:none; border-radius:6px; font-size:.8rem; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:.35rem; transition:all .15s; text-decoration:none; white-space:nowrap; }
+.pm-btn-primary { background:#f43f5e; color:#fff; } .pm-btn-primary:hover { background:#e11d48; }
+.pm-btn-success { background:#10b981; color:#fff; } .pm-btn-success:hover { background:#059669; }
+.pm-btn-info    { background:#3b82f6; color:#fff; } .pm-btn-info:hover    { background:#2563eb; }
+.pm-btn-ghost   { background:#f3f4f6; color:#374151; border:1px solid #e5e7eb; } .pm-btn-ghost:hover { background:#e5e7eb; }
+.pm-icon-btn { width:28px; height:28px; padding:0; border-radius:6px; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; transition:all .12s; text-decoration:none; flex-shrink:0; border:1px solid transparent; }
+.pm-icon-view { background:#f3f4f6; border-color:#e5e7eb; color:#6b7280; } .pm-icon-view:hover { background:#e5e7eb; color:#374151; }
+.pm-icon-edit { background:#fff1f2; border-color:#fecdd3; color:#e11d48; } .pm-icon-edit:hover { background:#ffe4e6; }
+.pm-icon-del  { background:#fef2f2; border-color:#fecaca; color:#dc2626; } .pm-icon-del:hover  { background:#fee2e2; }
+
+.pm-table-wrap { background:#fff; border:1px solid #e5e7eb; border-radius:8px; overflow:hidden; }
+.pm-table { width:100%; border-collapse:collapse; }
+.pm-table thead tr { background:#f8fafc; }
+.pm-table th { padding:.6rem 1rem; font-size:.7rem; font-weight:700; color:#6b7280; text-transform:uppercase; letter-spacing:.05em; border-bottom:1px solid #e5e7eb; white-space:nowrap; }
+.pm-table td { padding:.65rem 1rem; font-size:.82rem; color:#374151; border-bottom:1px solid #f3f4f6; vertical-align:middle; }
+.pm-table tbody tr:last-child td { border-bottom:none; }
+.pm-table tbody tr:hover td { background:#f9fafb; }
+
+.pm-avatar { width:32px; height:32px; border-radius:50%; background:linear-gradient(135deg,#f43f5e,#e11d48); color:#fff; font-size:.72rem; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.pm-user-cell { display:flex; align-items:center; gap:.6rem; }
+.pm-user-name { font-weight:600; color:#1f2937; font-size:.83rem; }
+
+.pm-pid { display:inline-flex; padding:.18rem .55rem; border-radius:5px; font-size:.7rem; font-weight:700; font-family:monospace; background:#1f2937; color:#fff; }
+.pos-badge { display:inline-flex; padding:.15rem .45rem; border-radius:5px; font-size:.7rem; font-weight:600; background:#fdf2f8; color:#a21caf; border:1px solid #f5d0fe; }
+.pm-status { display:inline-flex; padding:.18rem .55rem; border-radius:20px; font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.04em; }
+.pm-status-active    { background:#d1fae5; color:#065f46; }
+.pm-status-inactive  { background:#fef3c7; color:#92400e; }
+.pm-status-suspended { background:#fee2e2; color:#991b1b; }
+
+.pm-bank-name { font-weight:500; font-size:.82rem; }
+.pm-bank-sub { font-size:.7rem; color:#6b7280; }
+.pm-bank-acc { font-size:.72rem; color:#6b7280; font-family:monospace; }
+.no-val { font-size:.75rem; color:#9ca3af; font-style:italic; }
+.pm-actions { display:flex; gap:.3rem; justify-content:flex-end; }
+.pm-pagination { border-top:1px solid #e5e7eb; }
+.pm-empty { padding:3rem 1rem; text-align:center; }
+.pm-empty-icon { width:48px; height:48px; background:#f3f4f6; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto .75rem; }
+.pm-empty p { color:#6b7280; font-size:.85rem; margin:.25rem 0; }
+
+/* CSV Import Modal */
+.pm-modal { position:fixed; z-index:1050; inset:0; background:rgba(0,0,0,.55); backdrop-filter:blur(2px); display:flex; align-items:center; justify-content:center; padding:1rem; }
+.pm-modal-box { background:#fff; border-radius:10px; width:100%; max-width:560px; max-height:90vh; box-shadow:0 25px 50px -12px rgba(0,0,0,.25); display:flex; flex-direction:column; overflow:hidden; }
+.pm-modal-head { padding:1rem 1.25rem; border-bottom:1px solid #e5e7eb; display:flex; justify-content:space-between; align-items:center; }
+.pm-modal-title { font-size:.95rem; font-weight:700; color:#1f2937; margin:0; }
+.pm-modal-close { width:28px; height:28px; border-radius:6px; border:none; background:#f3f4f6; color:#6b7280; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:1rem; }
+.pm-modal-close:hover { background:#e5e7eb; color:#374151; }
+.pm-modal-body { padding:1rem 1.25rem; overflow-y:auto; flex:1; }
+.pm-modal-foot { padding:.75rem 1.25rem; border-top:1px solid #e5e7eb; background:#fafafa; display:flex; justify-content:flex-end; gap:.5rem; }
+.pm-info-box { background:#eff6ff; border:1px solid #bfdbfe; border-radius:6px; padding:.75rem 1rem; font-size:.78rem; color:#1e40af; margin-bottom:.75rem; }
+.pm-info-box ul { margin:.4rem 0 0 1.1rem; padding:0; }
+.pm-info-box li { margin-bottom:.2rem; }
+.pm-warn-box { background:#fffbeb; border:1px solid #fde68a; border-radius:6px; padding:.75rem 1rem; font-size:.78rem; color:#92400e; }
+.pm-warn-box ul { margin:.4rem 0 0 1.1rem; padding:0; }
+.pm-warn-box li { margin-bottom:.2rem; }
+</style>
+
+@if(session('success'))
+<div style="background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;padding:.6rem 1rem;border-radius:8px;font-size:.82rem;margin-bottom:.75rem;display:flex;align-items:center;gap:.5rem;">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+    {{ session('success') }}
+</div>
+@endif
+@if(session('error'))
+<div style="background:#fef2f2;border:1px solid #fecaca;color:#991b1b;padding:.6rem 1rem;border-radius:8px;font-size:.82rem;margin-bottom:.75rem;">{{ session('error') }}</div>
+@endif
+
+{{-- Header --}}
+<div class="pm-header">
+    <div>
+        <p class="pm-title">All Promoters</p>
+        <p class="pm-subtitle">Manage promoter profiles and their assignments</p>
     </div>
-    <div class="card-body">
-        <!-- Search and Filter Bar -->
-        <div class="search-filter-bar" style="background: #f8fafc; padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid #e2e8f0;">
-            <form method="GET" action="{{ route('admin.promoters.index') }}" id="searchFilterForm">
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
-                    <!-- Search Input -->
-                    <div>
-                        <label for="search" style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: #374151; font-size: 0.875rem;">Search</label>
-                        <div style="position: relative;">
-                            <input type="text" 
-                                   id="search" 
-                                   name="search" 
-                                   value="{{ request('search') }}" 
-                                   placeholder="Search promoters..." 
-                                   style="width: 100%; padding: 0.75rem 1rem 0.75rem 2.5rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.875rem; background: white;">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: #6b7280;">
-                                <circle cx="11" cy="11" r="8"></circle>
-                                <path d="M21 21l-4.35-4.35"></path>
-                            </svg>
-                        </div>
-                    </div>
-
-                    <!-- Position Filter -->
-                    <div>
-                        <label for="position" style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: #374151; font-size: 0.875rem;">Position</label>
-                        <select id="position" name="position" style="width: 100%; padding: 0.75rem 1rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.875rem; background: white;">
-                            <option value="">All Positions</option>
-                            @foreach($positions as $position)
-                                <option value="{{ $position->id }}" {{ request('position') == $position->id ? 'selected' : '' }}>
-                                    {{ $position->position_name }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <!-- Status Filter -->
-                    <div>
-                        <label for="status" style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: #374151; font-size: 0.875rem;">Status</label>
-                        <select id="status" name="status" style="width: 100%; padding: 0.75rem 1rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.875rem; background: white;">
-                            <option value="">All Status</option>
-                            @foreach($statuses as $status)
-                                <option value="{{ $status }}" {{ request('status') == $status ? 'selected' : '' }}>
-                                    {{ ucfirst($status) }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <!-- Sort By -->
-                    <div>
-                        <label for="sort_by" style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: #374151; font-size: 0.875rem;">Sort By</label>
-                        <select id="sort_by" name="sort_by" style="width: 100%; padding: 0.75rem 1rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.875rem; background: white;">
-                            <option value="created_at" {{ request('sort_by') == 'created_at' ? 'selected' : '' }}>Created Date</option>
-                            <option value="promoter_name" {{ request('sort_by') == 'promoter_name' ? 'selected' : '' }}>Name</option>
-                            <option value="promoter_id" {{ request('sort_by') == 'promoter_id' ? 'selected' : '' }}>Promoter ID</option>
-                            <option value="status" {{ request('sort_by') == 'status' ? 'selected' : '' }}>Status</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Date Range Filters -->
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
-                    <div>
-                        <label for="date_from" style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: #374151; font-size: 0.875rem;">From Date</label>
-                        <input type="date" 
-                               id="date_from" 
-                               name="date_from" 
-                               value="{{ request('date_from') }}" 
-                               style="width: 100%; padding: 0.75rem 1rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.875rem; background: white;">
-                    </div>
-                    <div>
-                        <label for="date_to" style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: #374151; font-size: 0.875rem;">To Date</label>
-                        <input type="date" 
-                               id="date_to" 
-                               name="date_to" 
-                               value="{{ request('date_to') }}" 
-                               style="width: 100%; padding: 0.75rem 1rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.875rem; background: white;">
-                    </div>
-                    <div>
-                        <label for="sort_order" style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: #374151; font-size: 0.875rem;">Order</label>
-                        <select id="sort_order" name="sort_order" style="width: 100%; padding: 0.75rem 1rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.875rem; background: white;">
-                            <option value="desc" {{ request('sort_order') == 'desc' ? 'selected' : '' }}>Descending</option>
-                            <option value="asc" {{ request('sort_order') == 'asc' ? 'selected' : '' }}>Ascending</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Action Buttons -->
-                <div style="display: flex; gap: 0.75rem; align-items: center;">
-                    <button type="submit" class="btn btn-primary" style="display: flex; align-items: center; gap: 0.5rem;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <path d="M21 21l-4.35-4.35"></path>
-                        </svg>
-                        Search & Filter
-                    </button>
-                    <a href="{{ route('admin.promoters.index') }}" class="btn btn-secondary" style="display: flex; align-items: center; gap: 0.5rem;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M3 6h18"></path>
-                            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                        </svg>
-                        Clear Filters
-                    </a>
-                    @if(request()->hasAny(['search', 'position', 'status', 'date_from', 'date_to', 'sort_by', 'sort_order']))
-                        <div style="margin-left: auto; padding: 0.5rem 1rem; background: #dbeafe; color: #1e40af; border-radius: 6px; font-size: 0.875rem; font-weight: 500;">
-                            {{ $promoters->total() }} result(s) found
-                        </div>
-                    @endif
-                </div>
-            </form>
-        </div>
-
-        @if($promoters->count() > 0)
-            <div class="table-responsive">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Promoter ID</th>
-                            <th>Name</th>
-                            <th>Position</th>
-                            <th>ID Card No.</th>
-                            <th>Phone</th>
-                            <th>Bank Details</th>
-                            <th>Status</th>
-                            <th>Created</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($promoters as $promoter)
-                        <tr>
-                            <td>
-                                <span style="background: #1f2937; color: white; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-weight: bold; font-size: 0.8rem; font-family: monospace;">
-                                    {{ $promoter->promoter_id }}
-                                </span>
-                            </td>
-                            <td>
-                                <div style="font-weight: 600;">{{ $promoter->promoter_name }}</div>
-                            </td>
-                            <td>
-                                @if($promoter->position)
-                                    <span style="background: #e0f2fe; color: #0277bd; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.8rem; font-weight: 500;">
-                                        {{ $promoter->position->position_name }}
-                                    </span>
-                                @else
-                                    <span style="color: #9ca3af; font-style: italic;">No position</span>
-                                @endif
-                            </td>
-                            <td>
-                                <span style="font-family: monospace; font-size: 0.9rem;">{{ $promoter->identity_card_no }}</span>
-                            </td>
-                            <td>{{ $promoter->phone_no }}</td>
-                            <td>
-                                <div style="font-size: 0.85rem;">
-                                    <div style="font-weight: 500;">{{ $promoter->bank_name }}</div>
-                                    <div style="color: #6b7280;">{{ $promoter->bank_branch_name }}</div>
-                                    <div style="color: #6b7280; font-family: monospace;">****{{ substr($promoter->bank_account_number, -4) }}</div>
-                                </div>
-                            </td>
-                            <td>
-                                <span class="status-badge status-{{ $promoter->status }}">
-                                    {{ ucfirst($promoter->status) }}
-                                </span>
-                            </td>
-                            <td>{{ $promoter->created_at->format('M d, Y') }}</td>
-                            <td>
-                                <div style="display: flex; gap: 8px;">
-                                    @can('view promoters')
-                                        <a href="{{ route('admin.promoters.show', $promoter) }}" class="btn btn-sm btn-info">
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                                <circle cx="12" cy="12" r="3"></circle>
-                                            </svg>
-                                        </a>
-                                    @endcan
-                                    @can('edit promoters')
-                                        <a href="{{ route('admin.promoters.edit', $promoter) }}" class="btn btn-sm btn-warning">
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                                            </svg>
-                                        </a>
-                                    @endcan
-                                    @can('delete promoters')
-                                        <form action="{{ route('admin.promoters.destroy', $promoter) }}" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete promoter {{ $promoter->promoter_id }}?')">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="btn btn-sm btn-danger">
-                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                    <polyline points="3,6 5,6 21,6"></polyline>
-                                                    <path d="M19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"></path>
-                                                </svg>
-                                            </button>
-                                        </form>
-                                    @endcan
-                                </div>
-                            </td>
-                        </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="pagination-container">
-                {{ $promoters->links() }}
-            </div>
-        @else
-            <div style="text-align: center; padding: 2rem;">
-                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1rem;">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="12" cy="7" r="4"></circle>
-                </svg>
-                <h3 style="color: #6b7280; margin-bottom: 0.5rem;">No promoters found</h3>
-                <p style="color: #9ca3af;">Get started by adding your first promoter.</p>
-                @can('create promoters')
-                    <a href="{{ route('admin.promoters.create') }}" class="btn btn-success" style="margin-top: 1rem;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
-                            <line x1="12" y1="5" x2="12" y2="19"></line>
-                            <line x1="5" y1="12" x2="19" y2="12"></line>
-                        </svg>
-                        Add First Promoter
-                    </a>
-                @endcan
-            </div>
-        @endif
+    <div style="display:flex;gap:.4rem;flex-wrap:wrap;">
+        @can('create promoters')
+        <button type="button" class="pm-btn pm-btn-info" onclick="openCsvModal()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            Import CSV
+        </button>
+        <a href="{{ route('admin.promoters.create') }}" class="pm-btn pm-btn-success">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add New Promoter
+        </a>
+        @endcan
     </div>
 </div>
 
-<style>
-.status-badge {
-    padding: 0.25rem 0.75rem;
-    border-radius: 9999px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
-.status-active {
-    background-color: #d1fae5;
-    color: #065f46;
-}
-
-.status-inactive {
-    background-color: #fef3c7;
-    color: #92400e;
-}
-
-.status-suspended {
-    background-color: #fee2e2;
-    color: #991b1b;
-}
-
-.table-responsive {
-    overflow-x: auto;
-    margin-top: 1rem;
-}
-
-.table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 1rem;
-    background: white;
-    border-radius: 8px;
-    overflow: hidden;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.table th,
-.table td {
-    padding: 0.75rem;
-    text-align: left;
-    border-bottom: 1px solid #e5e7eb;
-}
-
-.table th {
-    background-color: #f9fafb;
-    font-weight: 600;
-    color: #374151;
-    border-bottom: 2px solid #e5e7eb;
-}
-
-.table tbody tr:hover {
-    background-color: #f9fafb;
-}
-
-.table tbody tr:last-child td {
-    border-bottom: none;
-}
-
-.btn-sm {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.875rem;
-    border-radius: 0.375rem;
-}
-
-.btn-info {
-    background-color: #3b82f6;
-    color: white;
-    border: none;
-}
-
-.btn-warning {
-    background-color: #f59e0b;
-    color: white;
-    border: none;
-}
-
-.btn-danger {
-    background-color: #ef4444;
-    color: white;
-    border: none;
-}
-
-.btn-info:hover,
-.btn-warning:hover,
-.btn-danger:hover {
-    opacity: 0.9;
-    transform: translateY(-1px);
-}
-
-/* Modal Styles */
-.modal {
-    position: fixed;
-    z-index: 1050;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(2px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 1rem;
-}
-
-.modal-content {
-    background-color: #ffffff;
-    border-radius: 8px;
-    width: 100%;
-    max-width: 600px;
-    max-height: 90vh;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-    animation: modalSlideIn 0.2s ease-out;
-    overflow: hidden;
-    position: relative;
-}
-
-@keyframes modalSlideIn {
-    from {
-        opacity: 0;
-        transform: scale(0.95) translateY(-20px);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1) translateY(0);
-    }
-}
-
-.modal-header {
-    padding: 1.5rem 2rem;
-    border-bottom: 1px solid #e5e7eb;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background-color: #ffffff;
-}
-
-.modal-header h3 {
-    margin: 0;
-    color: #1f2937;
-    font-size: 1.375rem;
-    font-weight: 600;
-    letter-spacing: -0.025em;
-}
-
-.close {
-    color: #6b7280;
-    font-size: 1.5rem;
-    font-weight: 400;
-    cursor: pointer;
-    line-height: 1;
-    padding: 0.25rem;
-    border-radius: 4px;
-    transition: all 0.15s ease;
-    width: 2rem;
-    height: 2rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.close:hover {
-    color: #374151;
-    background-color: #f3f4f6;
-}
-
-.modal-body {
-    padding: 2rem;
-    max-height: calc(90vh - 140px);
-    overflow-y: auto;
-}
-
-/* Alert Styles */
-.alert {
-    padding: 1rem 1.25rem;
-    margin-bottom: 1.5rem;
-    border: 1px solid transparent;
-    border-radius: 6px;
-    font-size: 0.875rem;
-    line-height: 1.5;
-}
-
-.alert h6 {
-    margin: 0 0 0.75rem 0;
-    font-weight: 600;
-    font-size: 0.875rem;
-}
-
-.alert ul {
-    margin: 0.5rem 0 0 0;
-    padding-left: 1.25rem;
-}
-
-.alert li {
-    margin-bottom: 0.25rem;
-}
-
-.alert-info {
-    color: #1e40af;
-    background-color: #eff6ff;
-    border-color: #dbeafe;
-}
-
-.alert-warning {
-    color: #92400e;
-    background-color: #fffbeb;
-    border-color: #fed7aa;
-}
-
-.alert-success {
-    color: #166534;
-    background-color: #f0fdf4;
-    border-color: #bbf7d0;
-}
-
-.alert-danger {
-    color: #991b1b;
-    background-color: #fef2f2;
-    border-color: #fecaca;
-}
-
-/* Form Styles */
-.form-label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-weight: 500;
-    color: #374151;
-    font-size: 0.875rem;
-}
-
-.form-control {
-    display: block;
-    width: 100%;
-    padding: 0.75rem 1rem;
-    font-size: 0.875rem;
-    font-weight: 400;
-    line-height: 1.5;
-    color: #374151;
-    background-color: #ffffff;
-    background-clip: padding-box;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-}
-
-.form-control:focus {
-    color: #374151;
-    background-color: #ffffff;
-    border-color: #3b82f6;
-    outline: 0;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.form-text {
-    margin-top: 0.25rem;
-    font-size: 0.75rem;
-    color: #6b7280;
-}
-
-/* Button Styles */
-.btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.75rem 1.5rem;
-    font-size: 0.875rem;
-    font-weight: 500;
-    line-height: 1.25;
-    border-radius: 6px;
-    border: 1px solid transparent;
-    cursor: pointer;
-    transition: all 0.15s ease-in-out;
-    text-decoration: none;
-    min-height: 2.5rem;
-}
-
-.btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-
-.btn-primary {
-    background-color: #3b82f6;
-    border-color: #3b82f6;
-    color: #ffffff;
-}
-
-.btn-primary:hover:not(:disabled) {
-    background-color: #2563eb;
-    border-color: #2563eb;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-}
-
-.btn-secondary {
-    background-color: #6b7280;
-    border-color: #6b7280;
-    color: #ffffff;
-}
-
-.btn-secondary:hover:not(:disabled) {
-    background-color: #4b5563;
-    border-color: #4b5563;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-}
-
-.btn-outline-info {
-    background-color: transparent;
-    border-color: #3b82f6;
-    color: #3b82f6;
-}
-
-.btn-outline-info:hover {
-    background-color: #3b82f6;
-    border-color: #3b82f6;
-    color: #ffffff;
-}
-
-.btn-sm {
-    padding: 0.5rem 1rem;
-    font-size: 0.75rem;
-    min-height: 2rem;
-}
-
-/* Modal Footer */
-.modal-footer {
-    padding: 1.5rem 2rem;
-    border-top: 1px solid #e5e7eb;
-    background-color: #f9fafb;
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.75rem;
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-    .modal {
-        padding: 0.5rem;
-    }
-    
-    .modal-content {
-        max-width: 100%;
-        margin: 0;
-    }
-    
-    .modal-header {
-        padding: 1rem 1.5rem;
-    }
-    
-    .modal-header h3 {
-        font-size: 1.125rem;
-    }
-    
-    .modal-body {
-        padding: 1.5rem;
-    }
-    
-    .modal-footer {
-        padding: 1rem 1.5rem;
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-    
-    .modal-footer .btn {
-        width: 100%;
-        justify-content: center;
-    }
-    
-    .alert {
-        padding: 0.875rem 1rem;
-        margin-bottom: 1rem;
-    }
-    
-    .alert ul {
-        padding-left: 1rem;
-    }
-}
-</style>
-
-<!-- CSV Import Modal -->
-<div id="csvImportModal" class="modal" style="display: none;">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>Import Promoters from CSV</h3>
-            <span class="close" onclick="closeCsvImportModal()">&times;</span>
+{{-- Stats --}}
+<div class="pm-stats">
+    <div class="pm-stat">
+        <div class="pm-stat-icon" style="background:#fff1f2;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f43f5e" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         </div>
-        <form id="csvImportForm" action="{{ route('admin.promoters.import-csv') }}" method="POST" enctype="multipart/form-data">
+        <div><div class="pm-stat-val">{{ $total }}</div><div class="pm-stat-lbl">Total Promoters</div></div>
+    </div>
+    <div class="pm-stat">
+        <div class="pm-stat-icon" style="background:#f0fdf4;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <div><div class="pm-stat-val">{{ $active }}</div><div class="pm-stat-lbl">Active</div></div>
+    </div>
+    <div class="pm-stat">
+        <div class="pm-stat-icon" style="background:#fefce8;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ca8a04" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+        <div><div class="pm-stat-val">{{ $inactive }}</div><div class="pm-stat-lbl">Inactive</div></div>
+    </div>
+    <div class="pm-stat">
+        <div class="pm-stat-icon" style="background:#fef2f2;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        </div>
+        <div><div class="pm-stat-val">{{ $suspended }}</div><div class="pm-stat-lbl">Suspended</div></div>
+    </div>
+</div>
+
+{{-- Filters --}}
+<form method="GET" action="{{ route('admin.promoters.index') }}" id="pmFilterForm">
+<div class="pm-filters">
+    <div class="pm-filter-row">
+        <div class="pm-filter-group" style="flex:2;min-width:200px;">
+            <label>Search</label>
+            <div style="position:relative;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2" style="position:absolute;left:.6rem;top:50%;transform:translateY(-50%);"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input class="pm-input" id="pm-search" name="search" value="{{ request('search') }}" placeholder="Name, ID, phone, ID card…" style="padding-left:2rem;">
+            </div>
+        </div>
+        <div class="pm-filter-group">
+            <label>Position</label>
+            <select class="pm-input" name="position">
+                <option value="">All positions</option>
+                @foreach($positions as $pos)
+                    <option value="{{ $pos->id }}" {{ request('position') == $pos->id ? 'selected' : '' }}>{{ $pos->position_name }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div class="pm-filter-group">
+            <label>Status</label>
+            <select class="pm-input" name="status">
+                <option value="">All statuses</option>
+                <option value="active"    {{ request('status') === 'active'    ? 'selected' : '' }}>Active</option>
+                <option value="inactive"  {{ request('status') === 'inactive'  ? 'selected' : '' }}>Inactive</option>
+                <option value="suspended" {{ request('status') === 'suspended' ? 'selected' : '' }}>Suspended</option>
+            </select>
+        </div>
+        <div class="pm-filter-group">
+            <label>Sort By</label>
+            <select class="pm-input" name="sort_by">
+                <option value="created_at"    {{ request('sort_by', 'created_at') == 'created_at'    ? 'selected' : '' }}>Created Date</option>
+                <option value="promoter_name" {{ request('sort_by') == 'promoter_name' ? 'selected' : '' }}>Name</option>
+                <option value="promoter_id"   {{ request('sort_by') == 'promoter_id'   ? 'selected' : '' }}>Promoter ID</option>
+                <option value="status"        {{ request('sort_by') == 'status'        ? 'selected' : '' }}>Status</option>
+            </select>
+        </div>
+        <div class="pm-filter-group" style="min-width:90px;max-width:110px;">
+            <label>Order</label>
+            <select class="pm-input" name="sort_order">
+                <option value="desc" {{ request('sort_order', 'desc') == 'desc' ? 'selected' : '' }}>Desc</option>
+                <option value="asc"  {{ request('sort_order') == 'asc'  ? 'selected' : '' }}>Asc</option>
+            </select>
+        </div>
+        <div style="display:flex;gap:.35rem;padding-bottom:.05rem;">
+            <button type="submit" class="pm-btn pm-btn-primary">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                Filter
+            </button>
+            @if(request()->hasAny(['search','position','status','date_from','date_to','sort_by','sort_order']))
+            <a href="{{ route('admin.promoters.index') }}" class="pm-btn pm-btn-ghost">Clear</a>
+            @endif
+        </div>
+    </div>
+    {{-- Date row --}}
+    @if(request('date_from') || request('date_to'))
+    <div class="pm-filter-row" style="margin-top:.5rem;">
+        <div class="pm-filter-group" style="max-width:200px;">
+            <label>From Date</label>
+            <input class="pm-input" type="date" name="date_from" value="{{ request('date_from') }}">
+        </div>
+        <div class="pm-filter-group" style="max-width:200px;">
+            <label>To Date</label>
+            <input class="pm-input" type="date" name="date_to" value="{{ request('date_to') }}">
+        </div>
+    </div>
+    @else
+    <div style="margin-top:.4rem;">
+        <button type="button" onclick="toggleDateFilters(this)" class="pm-btn pm-btn-ghost" style="font-size:.75rem;padding:.3rem .65rem;">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Date Range
+        </button>
+        <div id="pm-date-row" style="display:none;margin-top:.5rem;" class="pm-filter-row">
+            <div class="pm-filter-group" style="max-width:200px;">
+                <label>From Date</label>
+                <input class="pm-input" type="date" name="date_from" value="{{ request('date_from') }}">
+            </div>
+            <div class="pm-filter-group" style="max-width:200px;">
+                <label>To Date</label>
+                <input class="pm-input" type="date" name="date_to" value="{{ request('date_to') }}">
+            </div>
+        </div>
+    </div>
+    @endif
+</div>
+</form>
+
+{{-- Table --}}
+<div class="pm-table-wrap">
+    @if($promoters->count() > 0)
+    <table class="pm-table">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Promoter</th>
+                <th>Position</th>
+                <th>ID Card</th>
+                <th>Phone</th>
+                <th>Bank</th>
+                <th>Status</th>
+                <th>Joined</th>
+                <th style="text-align:right;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($promoters as $promoter)
+            <tr>
+                <td style="color:#9ca3af;font-size:.75rem;">{{ $promoters->firstItem() + $loop->index }}</td>
+                <td>
+                    <div class="pm-user-cell">
+                        <div class="pm-avatar">{{ strtoupper(substr($promoter->promoter_name,0,1)) }}{{ strtoupper(substr(explode(' ',$promoter->promoter_name)[1] ?? '',0,1)) }}</div>
+                        <div>
+                            <div class="pm-user-name">{{ $promoter->promoter_name }}</div>
+                            <span class="pm-pid">{{ $promoter->promoter_id }}</span>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    @if($promoter->position)
+                        <span class="pos-badge">{{ $promoter->position->position_name }}</span>
+                    @else
+                        <span class="no-val">No position</span>
+                    @endif
+                </td>
+                <td style="font-family:monospace;font-size:.78rem;color:#374151;">{{ $promoter->identity_card_no }}</td>
+                <td style="font-size:.82rem;white-space:nowrap;">{{ $promoter->phone_no }}</td>
+                <td>
+                    <div class="pm-bank-name">{{ $promoter->bank_name }}</div>
+                    <div class="pm-bank-sub">{{ $promoter->bank_branch_name }}</div>
+                    <div class="pm-bank-acc">****{{ substr($promoter->bank_account_number, -4) }}</div>
+                </td>
+                <td><span class="pm-status pm-status-{{ $promoter->status }}">{{ ucfirst($promoter->status) }}</span></td>
+                <td style="white-space:nowrap;color:#6b7280;font-size:.78rem;">{{ $promoter->created_at->format('d M Y') }}</td>
+                <td>
+                    <div class="pm-actions">
+                        @can('view promoters')
+                        <a href="{{ route('admin.promoters.show', $promoter) }}" class="pm-icon-btn pm-icon-view" title="View">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </a>
+                        @endcan
+                        @can('edit promoters')
+                        <a href="{{ route('admin.promoters.edit', $promoter) }}" class="pm-icon-btn pm-icon-edit" title="Edit">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        </a>
+                        @endcan
+                        @can('delete promoters')
+                        <form method="POST" action="{{ route('admin.promoters.destroy', $promoter) }}" style="display:inline;" onsubmit="return confirm('Delete {{ addslashes($promoter->promoter_name) }}? This cannot be undone.')">
+                            @csrf @method('DELETE')
+                            <button type="submit" class="pm-icon-btn pm-icon-del" title="Delete">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                            </button>
+                        </form>
+                        @endcan
+                    </div>
+                </td>
+            </tr>
+            @endforeach
+        </tbody>
+    </table>
+    <div class="pm-pagination">
+        {{ $promoters->links() }}
+    </div>
+    @else
+    <div class="pm-empty">
+        <div class="pm-empty-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+        </div>
+        @if(request()->hasAny(['search','position','status','date_from','date_to']))
+            <p style="font-weight:600;color:#374151;">No promoters match your filters</p>
+            <p>Try adjusting your search or <a href="{{ route('admin.promoters.index') }}" style="color:#f43f5e;">clear filters</a>.</p>
+        @else
+            <p style="font-weight:600;color:#374151;">No promoters yet</p>
+            @can('create promoters')
+            <p><a href="{{ route('admin.promoters.create') }}" style="color:#f43f5e;">Add the first promoter</a></p>
+            @endcan
+        @endif
+    </div>
+    @endif
+</div>
+
+{{-- CSV Import Modal --}}
+<div id="pm-csv-modal" class="pm-modal" style="display:none;">
+    <div class="pm-modal-box">
+        <div class="pm-modal-head">
+            <p class="pm-modal-title">Import Promoters from CSV</p>
+            <button class="pm-modal-close" onclick="closeCsvModal()">&times;</button>
+        </div>
+        <form id="pm-csv-form" action="{{ route('admin.promoters.import-csv') }}" method="POST" enctype="multipart/form-data">
             @csrf
-            <div class="modal-body">
-                <div style="margin-bottom: 1.5rem;">
-                    <label for="csvFile" class="form-label">Select CSV File</label>
-                    <input type="file" class="form-control" id="csvFile" name="csv_file" accept=".csv" required>
-                    <div class="form-text">Please select a CSV file containing promoter data.</div>
+            <div class="pm-modal-body">
+                <div style="margin-bottom:.75rem;">
+                    <label class="pm-filter-group" style="gap:.3rem;">
+                        <span style="font-size:.75rem;font-weight:600;color:#374151;">Select CSV File</span>
+                        <input type="file" class="pm-input" name="csv_file" accept=".csv" required>
+                    </label>
                 </div>
-                
-                <div class="alert alert-info">
-                    <h6>CSV Format Requirements</h6>
-                    <p style="margin-bottom: 0.75rem;">Your CSV file should contain the following columns (in any order):</p>
+                <div class="pm-info-box">
+                    <strong>Required CSV columns:</strong>
                     <ul>
-                        <li><strong>promoter_name</strong> - Full name of the promoter</li>
-                        <li><strong>position_name</strong> - Position name (must match existing positions)</li>
-                        <li><strong>identity_card_no</strong> - ID card number</li>
-                        <li><strong>phone_no</strong> - Phone number</li>
-                        <li><strong>bank_name</strong> - Bank name</li>
-                        <li><strong>bank_branch_name</strong> - Bank branch name</li>
-                        <li><strong>bank_account_number</strong> - Bank account number</li>
-                        <li><strong>status</strong> - Status (active, inactive, suspended)</li>
+                        <li><strong>promoter_name</strong> — Full name</li>
+                        <li><strong>position_name</strong> — Must match an existing position</li>
+                        <li><strong>identity_card_no</strong> — ID card number</li>
+                        <li><strong>phone_no</strong> — Phone number</li>
+                        <li><strong>bank_name</strong>, <strong>bank_branch_name</strong>, <strong>bank_account_number</strong></li>
+                        <li><strong>status</strong> — active / inactive / suspended</li>
                     </ul>
-                    <div style="margin-top: 1rem;">
-                        <a href="{{ asset('sample-promoters.csv') }}" class="btn btn-sm btn-outline-info" download>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                <polyline points="7,10 12,15 17,10"></polyline>
-                                <line x1="12" y1="15" x2="12" y2="3"></line>
-                            </svg>
+                    <div style="margin-top:.5rem;">
+                        <a href="{{ asset('sample-promoters.csv') }}" class="pm-btn pm-btn-ghost" style="font-size:.75rem;padding:.3rem .65rem;" download>
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                             Download Sample CSV
                         </a>
                     </div>
                 </div>
-                
-                <div class="alert alert-warning">
-                    <h6>Important Notes</h6>
+                <div class="pm-warn-box">
+                    <strong>Important:</strong>
                     <ul>
-                        <li>Promoter IDs will be automatically generated</li>
-                        <li>Position names must exactly match existing positions</li>
-                        <li>Duplicate phone numbers or ID card numbers will be skipped</li>
-                        <li>Status must be one of: active, inactive, suspended</li>
+                        <li>Promoter IDs are auto-generated</li>
+                        <li>Duplicate phone or ID card numbers are skipped</li>
+                        <li>Status must be exactly: active, inactive, or suspended</li>
                     </ul>
                 </div>
-                
-                <div id="importStatus" class="alert" style="display: none;"></div>
+                <div id="pm-import-status" style="display:none;margin-top:.75rem;padding:.6rem .85rem;border-radius:6px;font-size:.8rem;"></div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="closeCsvImportModal()">Cancel</button>
-                <button type="submit" class="btn btn-primary" id="importBtn">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                        <polyline points="14,2 14,8 20,8"></polyline>
-                        <line x1="16" y1="13" x2="8" y2="13"></line>
-                        <line x1="16" y1="17" x2="8" y2="17"></line>
-                        <polyline points="10,9 9,9 8,9"></polyline>
-                    </svg>
+            <div class="pm-modal-foot">
+                <button type="button" class="pm-btn pm-btn-ghost" onclick="closeCsvModal()">Cancel</button>
+                <button type="submit" class="pm-btn pm-btn-primary" id="pm-import-btn">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                     Import CSV
                 </button>
             </div>
@@ -722,166 +377,76 @@
 </div>
 
 <script>
-// Global modal functions
-function openCsvImportModal() {
-    const modal = document.getElementById('csvImportModal');
-    if (modal) {
-        modal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
+function openCsvModal() {
+    document.getElementById('pm-csv-modal').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+function closeCsvModal() {
+    document.getElementById('pm-csv-modal').style.display = 'none';
+    document.body.style.overflow = '';
+    document.getElementById('pm-csv-form').reset();
+    document.getElementById('pm-import-status').style.display = 'none';
+}
+function toggleDateFilters(btn) {
+    const row = document.getElementById('pm-date-row');
+    if (row) {
+        const vis = row.style.display !== 'none';
+        row.style.display = vis ? 'none' : 'flex';
+        btn.style.background = vis ? '' : '#e5e7eb';
     }
 }
+document.addEventListener('DOMContentLoaded', function () {
+    // Close modal on backdrop click
+    document.getElementById('pm-csv-modal').addEventListener('click', function (e) {
+        if (e.target === this) closeCsvModal();
+    });
 
-function closeCsvImportModal() {
-    const modal = document.getElementById('csvImportModal');
-    if (modal) {
-        modal.style.display = 'none';
-        document.body.style.overflow = 'auto';
-        // Reset form
-        const form = document.getElementById('csvImportForm');
-        const statusDiv = document.getElementById('importStatus');
-        if (form) form.reset();
-        if (statusDiv) statusDiv.style.display = 'none';
-    }
-}
+    // CSV form AJAX submit
+    const form = document.getElementById('pm-csv-form');
+    const btn  = document.getElementById('pm-import-btn');
+    const status = document.getElementById('pm-import-status');
 
-document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('csvImportForm');
-    const importBtn = document.getElementById('importBtn');
-    const statusDiv = document.getElementById('importStatus');
-    
-    form.addEventListener('submit', function(e) {
+    form.addEventListener('submit', function (e) {
         e.preventDefault();
-        
-        const formData = new FormData(form);
-        const fileInput = document.getElementById('csvFile');
-        
-        if (!fileInput.files[0]) {
-            showStatus('Please select a CSV file.', 'danger');
-            return;
-        }
-        
-        // Show loading state
-        importBtn.disabled = true;
-        importBtn.innerHTML = '<span style="display: inline-block; width: 16px; height: 16px; border: 2px solid #ffffff; border-radius: 50%; border-top-color: transparent; animation: spin 1s linear infinite; margin-right: 8px;"></span>Importing...';
-        
+        btn.disabled = true;
+        btn.textContent = 'Importing…';
         fetch(form.action, {
             method: 'POST',
-            body: formData,
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            }
+            body: new FormData(form),
+            headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
         })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                showStatus(`Successfully imported ${data.imported_count} promoters. ${data.skipped_count} rows were skipped.`, 'success');
-                setTimeout(() => {
-                    location.reload();
-                }, 2000);
+        .then(r => r.json())
+        .then(d => {
+            status.style.display = 'block';
+            if (d.success) {
+                status.style.cssText = 'display:block;background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;padding:.6rem .85rem;border-radius:6px;font-size:.8rem;margin-top:.75rem;';
+                status.textContent = d.message;
+                setTimeout(() => location.reload(), 1800);
             } else {
-                showStatus(data.message || 'Import failed. Please check your CSV file.', 'danger');
+                status.style.cssText = 'display:block;background:#fef2f2;border:1px solid #fecaca;color:#991b1b;padding:.6rem .85rem;border-radius:6px;font-size:.8rem;margin-top:.75rem;';
+                status.textContent = d.message || 'Import failed.';
             }
         })
-        .catch(error => {
-            console.error('Error:', error);
-            showStatus('An error occurred during import. Please try again.', 'danger');
+        .catch(() => {
+            status.style.cssText = 'display:block;background:#fef2f2;border:1px solid #fecaca;color:#991b1b;padding:.6rem .85rem;border-radius:6px;font-size:.8rem;margin-top:.75rem;';
+            status.textContent = 'An error occurred. Please try again.';
         })
         .finally(() => {
-            importBtn.disabled = false;
-            importBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14,2 14,8 20,8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10,9 9,9 8,9"></polyline></svg>Import CSV';
+            btn.disabled = false;
+            btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> Import CSV';
         });
     });
-    
-    function showStatus(message, type) {
-        statusDiv.style.display = 'block';
-        statusDiv.textContent = message;
-        statusDiv.style.backgroundColor = type === 'success' ? '#d4edda' : '#f8d7da';
-        statusDiv.style.color = type === 'success' ? '#155724' : '#721c24';
-        statusDiv.style.border = `1px solid ${type === 'success' ? '#c3e6cb' : '#f5c6cb'}`;
-        statusDiv.style.padding = '0.75rem';
-        statusDiv.style.borderRadius = '4px';
-    }
-    
-    // Close modal when clicking outside
-    document.getElementById('csvImportModal').addEventListener('click', function(e) {
-        if (e.target === this) {
-            closeCsvImportModal();
-        }
-    });
-});
 
-// Add CSS for spinner animation
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes spin {
-        to { transform: rotate(360deg); }
-    }
-    
-    /* Search and Filter Bar Styles */
-    .search-filter-bar input:focus,
-    .search-filter-bar select:focus {
-        outline: none;
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-    }
-    
-    .search-filter-bar .btn {
-        transition: all 0.15s ease-in-out;
-    }
-    
-    .search-filter-bar .btn:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    }
-`;
-document.head.appendChild(style);
+    // Auto-submit selects
+    ['position','status','sort_by','sort_order'].forEach(n => {
+        const el = document.querySelector('[name="' + n + '"]');
+        if (el) el.addEventListener('change', () => document.getElementById('pmFilterForm').submit());
+    });
 
-// Search and Filter functionality
-document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('searchFilterForm');
-    const searchInput = document.getElementById('search');
-    const positionSelect = document.getElementById('position');
-    const statusSelect = document.getElementById('status');
-    const sortBySelect = document.getElementById('sort_by');
-    const sortOrderSelect = document.getElementById('sort_order');
-    
-    // Auto-submit on select changes (with debounce for search)
-    let searchTimeout;
-    searchInput.addEventListener('input', function() {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-            form.submit();
-        }, 500); // 500ms delay for search
-    });
-    
-    // Immediate submit for select changes
-    [positionSelect, statusSelect, sortBySelect, sortOrderSelect].forEach(select => {
-        select.addEventListener('change', function() {
-            form.submit();
-        });
-    });
-    
-    // Date inputs
-    const dateFromInput = document.getElementById('date_from');
-    const dateToInput = document.getElementById('date_to');
-    
-    [dateFromInput, dateToInput].forEach(input => {
-        input.addEventListener('change', function() {
-            form.submit();
-        });
-    });
-    
-    // Clear filters functionality
-    const clearButton = document.querySelector('a[href="{{ route('admin.promoters.index') }}"]');
-    if (clearButton) {
-        clearButton.addEventListener('click', function(e) {
-            e.preventDefault();
-            // Clear all form inputs
-            form.reset();
-            // Submit the form to clear filters
-            form.submit();
-        });
-    }
+    // Debounced search
+    let t;
+    const s = document.getElementById('pm-search');
+    if (s) s.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => document.getElementById('pmFilterForm').submit(), 500); });
 });
 </script>
 @endsection

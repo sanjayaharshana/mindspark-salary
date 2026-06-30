@@ -10,10 +10,12 @@ use App\Models\Coordinator;
 use App\Models\Job;
 use App\Models\Allowance;
 use App\Models\User;
+use App\Models\PromoterPosition;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\SalarySheetCompleteNotification;
+use App\Mail\SalarySheetApprovedNotification;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
@@ -33,29 +35,66 @@ class SalarySheetController extends Controller
      */
     public function index()
     {
-        $query = SalarySheet::with(['job.client', 'items.position'])
-            ->withCount(['items'])
-            ->orderBy('created_at', 'desc');
+        $user  = auth()->user();
+        $isReporter = $user && method_exists($user, 'hasRole') && $user->hasRole('reporter');
 
-        // If logged-in user is an officer, only show salary sheets for their assigned jobs
-        $user = auth()->user();
-        if ($user && method_exists($user, 'hasRole') && $user->hasRole('officer')) {
-            $query->whereHas('job', function ($q) use ($user) {
-                $q->where('officer_id', $user->id);
+        // Base scope restricted by role
+        $baseScope = function ($q) use ($user) {
+            if ($user && method_exists($user, 'hasRole')) {
+                if ($user->hasRole('officer')) {
+                    $q->whereHas('job', fn($j) => $j->where('officer_id', $user->id));
+                } elseif ($user->hasRole('reporter')) {
+                    $q->whereHas('job', fn($j) => $j->where('reporter_id', $user->id));
+                }
+            }
+        };
+
+        // Stats (full counts, not paginated)
+        $statsQuery = SalarySheet::query();
+        $baseScope($statsQuery);
+        $stats = [
+            'total'    => (clone $statsQuery)->count(),
+            'draft'    => (clone $statsQuery)->where('status', 'draft')->count(),
+            'complete' => (clone $statsQuery)->where('status', 'complete')->count(),
+            'approve'  => (clone $statsQuery)->where('status', 'approve')->count(),
+            'paid'     => (clone $statsQuery)->where('status', 'paid')->count(),
+            'reject'   => (clone $statsQuery)->where('status', 'reject')->count(),
+        ];
+
+        // Filtered query
+        $query = SalarySheet::with(['job.client', 'creator'])
+            ->withCount('items')
+            ->tap($baseScope);
+
+        // Search: sheet_no, job number, client name
+        if ($search = request('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('sheet_no', 'like', "%{$search}%")
+                  ->orWhereHas('job', fn($j) => $j->where('job_number', 'like', "%{$search}%")
+                      ->orWhere('job_name', 'like', "%{$search}%"))
+                  ->orWhereHas('job.client', fn($j) => $j->where('name', 'like', "%{$search}%"));
             });
         }
 
-        $salarySheets = $query->paginate(20);
+        if ($status = request('status')) {
+            $query->where('status', $status);
+        }
 
-        // Add promoters count for each salary sheet
-        $salarySheets->getCollection()->transform(function ($sheet) {
-            $sheet->promoters_count = $sheet->items->filter(function ($item) {
-                return isset($item->attendance_data['promoter_id']) && !empty($item->attendance_data['promoter_id']);
-            })->count();
-            return $sheet;
-        });
+        if ($from = request('date_from')) {
+            $query->whereDate('created_at', '>=', $from);
+        }
+        if ($to = request('date_to')) {
+            $query->whereDate('created_at', '<=', $to);
+        }
 
-        return view('admin.salary-sheets.index', compact('salarySheets'));
+        $sortBy    = in_array(request('sort_by'), ['created_at', 'sheet_no', 'status']) ? request('sort_by') : 'created_at';
+        $sortOrder = request('sort_order', 'desc') === 'asc' ? 'asc' : 'desc';
+        $query->orderBy('job_id')->orderBy($sortBy, $sortOrder);
+
+        $allSheets = $query->get();
+        $grouped   = $allSheets->groupBy('job_id');
+
+        return view('admin.salary-sheets.index', compact('grouped', 'stats', 'isReporter'));
     }
 
     /**
@@ -66,24 +105,12 @@ class SalarySheetController extends Controller
         $promoters = Promoter::with('position')->get();
         $coordinators = Coordinator::all();
 
-        // If officer, only allow selecting jobs assigned to that officer
         $user = auth()->user();
+        $jobQuery = Job::with(['client', 'salarySheets']);
         if ($user && method_exists($user, 'hasRole') && $user->hasRole('officer')) {
-            $jobs = Job::with('client')
-                ->where('officer_id', $user->id)
-                ->where('status', '!=', 'completed')
-                ->whereDoesntHave('salarySheets', function ($query) {
-                    $query->whereIn('status', ['paid', 'complete', 'approve']);
-                })
-                ->get();
-        } else {
-            $jobs = Job::with('client')
-                ->where('status', '!=', 'completed')
-                ->whereDoesntHave('salarySheets', function ($query) {
-                    $query->whereIn('status', ['paid', 'complete', 'approve']);
-                })
-                ->get();
+            $jobQuery->where('officer_id', $user->id);
         }
+        $jobs = $jobQuery->orderBy('created_at', 'desc')->get();
         $allowances = Allowance::all();
 
         return view('admin.salary-sheets.create', compact('promoters', 'coordinators', 'jobs', 'allowances'));
@@ -126,6 +153,7 @@ class SalarySheetController extends Controller
                 'status' => $request->status,
                 'location' => $request->location,
                 'notes' => $request->notes,
+                'created_by' => auth()->id(),
             ]);
 
             Log::info('Created salary sheet:', $salarySheet->toArray());
@@ -146,8 +174,27 @@ class SalarySheetController extends Controller
 
                 // Get promoter to find position
                 $promoter = Promoter::find($rowData['promoter_id']);
-                if (!$promoter || !$promoter->position_id) {
-                    Log::warning('Promoter not found or no position assigned:', ['promoter_id' => $rowData['promoter_id']]);
+                if (!$promoter) {
+                    Log::warning('Promoter not found:', ['promoter_id' => $rowData['promoter_id']]);
+                    continue;
+                }
+
+                // Get position_id from form (dropdown) or handle custom position
+                $positionId = $rowData['position_id'] ?? null;
+                if ($positionId === 'custom' || empty($positionId)) {
+                    $customName = trim($rowData['custom_position_name'] ?? '');
+                    if ($customName) {
+                        $position = PromoterPosition::firstOrCreate(
+                            ['position_name' => $customName],
+                            ['status' => 'active']
+                        );
+                        $positionId = $position->id;
+                    } else {
+                        $positionId = $promoter->position_id;
+                    }
+                }
+                if (!$positionId) {
+                    Log::warning('No position assigned:', ['promoter_id' => $rowData['promoter_id']]);
                     continue;
                 }
 
@@ -199,7 +246,7 @@ class SalarySheetController extends Controller
                 $item = EmployersSalarySheetItem::create([
                     'no' => $itemNumber,
                     'location' => $rowData['location'] ?? $request->location,
-                    'position_id' => $promoter->position_id,
+                    'position_id' => $positionId,
                     'promoter_id' => $promoter->id,
                     'attendance_data' => $structuredAttendanceData,
                     'payment_data' => $paymentData,
@@ -268,7 +315,7 @@ class SalarySheetController extends Controller
             }
         }
 
-        $salarySheet->load(['job.client', 'items.position']);
+        $salarySheet->load(['job.client', 'items.position', 'items.promoter', 'creator']);
 
         return view('admin.salary-sheets.show', compact('salarySheet'));
     }
@@ -321,9 +368,45 @@ class SalarySheetController extends Controller
                 ->get();
         }
 
-        $salarySheet->load(['job', 'items.position']);
+        $salarySheet->load(['job', 'items.position', 'items.promoter']);
 
-        return view('admin.salary-sheets.edit', compact('salarySheet', 'promoters', 'coordinators', 'jobs'));
+        // Build jobSalarySheets for edit: one row per item, in the shape loadSalarySheetAsRow expects
+        $jobSalarySheets = $salarySheet->items->map(function ($item) {
+            $coordinatorId = null;
+            if (!empty($item->coordinator_details['coordinator_id'])) {
+                $coord = Coordinator::where('coordinator_id', $item->coordinator_details['coordinator_id'])->first();
+                if ($coord) {
+                    $coordinatorId = $coord->id;
+                }
+            }
+            return [
+                'promoter_id' => $item->promoter_id,
+                'position_id' => $item->position_id,
+                'position_name' => $item->position?->position_name,
+                'current_coordinator_id' => $coordinatorId,
+                'location' => $item->location ?? '',
+                'attendance_data' => $item->attendance_data ?? [],
+                'attendance_total' => $item->attendance_data['total'] ?? 0,
+                'attendance_amount' => $item->attendance_data['amount'] ?? 0,
+                'basic_salary' => $item->payment_data['amount'] ?? 0,
+                'expenses' => $item->payment_data['expenses'] ?? 0,
+                'hold_for_8_weeks' => $item->payment_data['hold_for_weeks'] ?? 0,
+                'net_salary' => $item->payment_data['net_amount'] ?? 0,
+                'coordination_fee' => $item->coordinator_details['amount'] ?? 0,
+                'position' => $item->position ? [
+                    'id' => $item->position->id,
+                    'position_name' => $item->position->position_name,
+                ] : null,
+                'allowances_data' => $item->allowances_data ?? [],
+                'payment_data' => $item->payment_data ?? [],
+                'coordinator_details' => $item->coordinator_details ?? [],
+            ];
+        })->values()->all();
+
+        $allowances = Allowance::all();
+
+        // Use the same create view for edit so UI and behavior match
+        return view('admin.salary-sheets.create', compact('salarySheet', 'promoters', 'coordinators', 'jobs', 'jobSalarySheets', 'allowances') + ['editSalarySheet' => $salarySheet]);
     }
 
     /**
@@ -383,6 +466,86 @@ class SalarySheetController extends Controller
                 'notes' => $request->notes,
             ]);
 
+            // Send email to admin, job's reporter, and job's officer when status is complete
+            if ($request->status === 'complete') {
+                $this->sendCompleteNotificationToReporters($salarySheet);
+            }
+
+            // Process rows when present (same structure as create/enforce)
+            $rows = $request->rows ?? [];
+            if (!empty($rows)) {
+                EmployersSalarySheetItem::where('sheet_no', $salarySheet->sheet_no)->delete();
+                $jobId = (int) $request->job_id;
+                foreach ($rows as $rowIndex => $rowData) {
+                    if (empty($rowData['promoter_id'])) {
+                        continue;
+                    }
+                    $promoter = Promoter::find($rowData['promoter_id']);
+                    if (!$promoter) {
+                        continue;
+                    }
+                    $positionId = $rowData['position_id'] ?? null;
+                    if ($positionId === 'custom' || empty($positionId)) {
+                        $customName = trim($rowData['custom_position_name'] ?? '');
+                        if ($customName) {
+                            $pos = PromoterPosition::firstOrCreate(
+                                ['position_name' => $customName],
+                                ['status' => 'active']
+                            );
+                            $positionId = $pos->id;
+                        } else {
+                            $positionId = $promoter->position_id;
+                        }
+                    }
+                    if (!$positionId) {
+                        continue;
+                    }
+                    $attendanceData = [];
+                    if (isset($rowData['attendance']) && is_array($rowData['attendance'])) {
+                        foreach ($rowData['attendance'] as $date => $value) {
+                            $attendanceData[$date] = $value === null ? 0 : (int) $value;
+                        }
+                    }
+                    $structuredAttendanceData = [
+                        'attendance' => $attendanceData,
+                        'total' => (int) ($rowData['attendance_total'] ?? 0),
+                        'amount' => (float) ($rowData['attendance_amount'] ?? 0),
+                        'promoter_id' => $rowData['promoter_id'],
+                        'promoter_name' => $rowData['promoter_name'] ?? 'Unknown',
+                        'position' => $rowData['position'] ?? 'Unknown'
+                    ];
+                    $paymentData = [
+                        'amount' => (float) ($rowData['amount'] ?? 0),
+                        'food_allowance' => (float) ($rowData['food_allowance'] ?? 0),
+                        'expenses' => (float) ($rowData['expenses'] ?? 0),
+                        'accommodation_allowance' => (float) ($rowData['accommodation_allowance'] ?? 0),
+                        'hold_for_weeks' => (float) ($rowData['hold_for_8_weeks'] ?? 0),
+                        'net_amount' => (float) ($rowData['net_amount'] ?? 0)
+                    ];
+                    $coordinatorDetails = null;
+                    if (!empty($rowData['coordinator_id'])) {
+                        $coord = Coordinator::find($rowData['coordinator_id']);
+                        $coordinatorDetails = [
+                            'coordinator_id' => $coord->coordinator_id ?? $rowData['coordinator_id'],
+                            'current_coordinator' => $coord->coordinator_name ?? $rowData['current_coordinator'] ?? 'Unknown',
+                            'amount' => (float) ($rowData['coordination_fee'] ?? 0)
+                        ];
+                    }
+                    EmployersSalarySheetItem::create([
+                        'no' => EmployersSalarySheetItem::generateItemNumber(),
+                        'location' => $rowData['location'] ?? $request->location,
+                        'position_id' => $positionId,
+                        'promoter_id' => $promoter->id,
+                        'attendance_data' => $structuredAttendanceData,
+                        'payment_data' => $paymentData,
+                        'coordinator_details' => $coordinatorDetails,
+                        'job_id' => $jobId,
+                        'sheet_no' => $salarySheet->sheet_no,
+                        'allowances_data' => $rowData['allowances'] ?? null,
+                    ]);
+                }
+            }
+
             return redirect()->route('admin.salary-sheets.index')
                 ->with('success', 'Salary sheet updated successfully.');
         } catch (\Exception $e) {
@@ -418,6 +581,56 @@ class SalarySheetController extends Controller
     }
 
     /**
+     * Duplicate a salary sheet with a new sheet number.
+     */
+    public function duplicate(Request $request, SalarySheet $salarySheet)
+    {
+        $request->validate([
+            'sheet_no' => 'required|string|max:50|unique:salary_sheet,sheet_no',
+        ]);
+
+        try {
+            \DB::beginTransaction();
+
+            $newSheet = SalarySheet::create([
+                'sheet_no'   => $request->sheet_no,
+                'job_id'     => $salarySheet->job_id,
+                'status'     => 'draft',
+                'location'   => $salarySheet->location,
+                'notes'      => $salarySheet->notes,
+                'created_by' => auth()->id(),
+            ]);
+
+            foreach ($salarySheet->items as $item) {
+                EmployersSalarySheetItem::create([
+                    'no'                  => EmployersSalarySheetItem::generateItemNumber(),
+                    'sheet_no'            => $newSheet->sheet_no,
+                    'job_id'              => $item->job_id,
+                    'promoter_id'         => $item->promoter_id,
+                    'position_id'         => $item->position_id,
+                    'location'            => $item->location,
+                    'attendance_data'     => $item->attendance_data,
+                    'payment_data'        => $item->payment_data,
+                    'coordinator_details' => $item->coordinator_details,
+                    'allowances_data'     => $item->allowances_data,
+                ]);
+            }
+
+            \DB::commit();
+
+            return response()->json([
+                'success'  => true,
+                'message'  => 'Salary sheet duplicated successfully.',
+                'sheet_id' => $newSheet->id,
+                'sheet_no' => $newSheet->sheet_no,
+            ]);
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
      * Get salary sheets by job ID (AJAX endpoint)
      */
     public function getByJob($jobId)
@@ -432,7 +645,11 @@ class SalarySheetController extends Controller
                 }
             }
 
-            $salarySheets = SalarySheet::with(['job', 'items.position'])
+            $salarySheets = SalarySheet::with([
+                    'job',
+                    'items:id,sheet_no,attendance_data',  // only needed for custom-date extraction
+                ])
+                ->withCount('items')
                 ->where('job_id', $jobId)
                 ->orderBy('created_at', 'desc')
                 ->get();
@@ -474,62 +691,38 @@ class SalarySheetController extends Controller
 
             Log::info('Processing rows:', $request->rows ?? []);
 
-            // SALARY_SHEET TABLE LOGIC: Check if data exists for job_id
-            // If exists: UPDATE the existing record
-            // If not exists: INSERT new record
+            // SALARY_SHEET TABLE LOGIC: Always INSERT a new sheet.
+            // Multiple salary sheets per job are supported.
+            $maxRetries = 3;
+            $retryCount = 0;
+            $salarySheet = null;
 
-            $existingSalarySheet = SalarySheet::where('job_id', $request->job_id)->first();
+            while ($retryCount < $maxRetries && !$salarySheet) {
+                try {
+                    $sheetNumber = SalarySheet::generateSheetNumber();
 
-            if ($existingSalarySheet) {
-                // UPDATE: Existing salary sheet found for this job_id
-                $salarySheet = $existingSalarySheet;
-                $salarySheet->update([
-                    'status' => $request->status,
-                    'location' => $request->location,
-                    'notes' => $request->notes,
-                ]);
+                    $salarySheet = SalarySheet::create([
+                        'sheet_no' => $sheetNumber,
+                        'job_id'   => $request->job_id,
+                        'status'   => $request->status,
+                        'location' => $request->location,
+                        'notes'    => $request->notes,
+                        'created_by' => auth()->id(),
+                    ]);
 
-                Log::info('Updated existing salary sheet for job_id:', [
-                    'job_id' => $request->job_id,
-                    'sheet_no' => $salarySheet->sheet_no,
-                    'updated_data' => $salarySheet->toArray()
-                ]);
-            } else {
-                // INSERT: No existing salary sheet for this job_id, create new
-                $maxRetries = 3;
-                $retryCount = 0;
-                $salarySheet = null;
+                    Log::info('Created new salary sheet for job_id:', [
+                        'job_id'   => $request->job_id,
+                        'sheet_no' => $sheetNumber,
+                    ]);
+                    break;
 
-                while ($retryCount < $maxRetries && !$salarySheet) {
-                    try {
-                        $sheetNumber = SalarySheet::generateSheetNumber();
-
-                        $salarySheet = SalarySheet::create([
-                            'sheet_no' => $sheetNumber,
-                            'job_id' => $request->job_id,
-                            'status' => $request->status,
-                            'location' => $request->location,
-                            'notes' => $request->notes,
-                        ]);
-
-                        Log::info('Created new salary sheet for job_id:', [
-                            'job_id' => $request->job_id,
-                            'sheet_no' => $sheetNumber,
-                            'created_data' => $salarySheet->toArray()
-                        ]);
-                        break; // Success, exit the retry loop
-
-                    } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
-                        $retryCount++;
-                        Log::warning("Duplicate sheet number detected, retry attempt {$retryCount}/{$maxRetries}: {$sheetNumber}");
-
-                        if ($retryCount >= $maxRetries) {
-                            throw new \Exception("Failed to generate unique sheet number after {$maxRetries} attempts");
-                        }
-
-                        // Small delay before retry
-                        usleep(100000); // 100ms
+                } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
+                    $retryCount++;
+                    Log::warning("Duplicate sheet number, retry {$retryCount}/{$maxRetries}: {$sheetNumber}");
+                    if ($retryCount >= $maxRetries) {
+                        throw new \Exception("Failed to generate unique sheet number after {$maxRetries} attempts");
                     }
+                    usleep(100000);
                 }
             }
 
@@ -549,7 +742,6 @@ class SalarySheetController extends Controller
             if (!$salarySheet || !$salarySheet->sheet_no) {
                 Log::error('SalarySheet is null or sheet_no is empty:', [
                     'salarySheet' => $salarySheet ? $salarySheet->toArray() : 'null',
-                    'existingSalarySheet' => $existingSalarySheet ? 'found' : 'not found'
                 ]);
                 throw new \Exception('SalarySheet is not properly initialized');
             }
@@ -565,8 +757,27 @@ class SalarySheetController extends Controller
 
                 // Get promoter to find position
                 $promoter = Promoter::find($rowData['promoter_id']);
-                if (!$promoter || !$promoter->position_id) {
-                    Log::warning('Promoter not found or no position assigned:', ['promoter_id' => $rowData['promoter_id']]);
+                if (!$promoter) {
+                    Log::warning('Promoter not found:', ['promoter_id' => $rowData['promoter_id']]);
+                    continue;
+                }
+
+                // Get position_id from form (dropdown) or handle custom position
+                $positionId = $rowData['position_id'] ?? null;
+                if ($positionId === 'custom' || empty($positionId)) {
+                    $customName = trim($rowData['custom_position_name'] ?? '');
+                    if ($customName) {
+                        $position = PromoterPosition::firstOrCreate(
+                            ['position_name' => $customName],
+                            ['status' => 'active']
+                        );
+                        $positionId = $position->id;
+                    } else {
+                        $positionId = $promoter->position_id;
+                    }
+                }
+                if (!$positionId) {
+                    Log::warning('No position assigned:', ['promoter_id' => $rowData['promoter_id']]);
                     continue;
                 }
 
@@ -616,7 +827,7 @@ class SalarySheetController extends Controller
                 $item = EmployersSalarySheetItem::create([
                     'no' => $itemNumber,
                     'location' => $rowData['location'] ?? $request->location,
-                    'position_id' => $promoter->position_id,
+                    'position_id' => $positionId,
                     'promoter_id' => $promoter->id,
                     'attendance_data' => $structuredAttendanceData,
                     'payment_data' => $paymentData,
@@ -640,7 +851,7 @@ class SalarySheetController extends Controller
 
             Log::info('Successfully processed salary sheet with items:', $createdItems);
 
-            $action = $existingSalarySheet ? 'updated' : 'created';
+            $action = 'created';
 
 
 
@@ -659,7 +870,7 @@ class SalarySheetController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
 
-            $action = $existingSalarySheet ? 'update' : 'create';
+            $action = 'create';
             return redirect()->back()
                 ->withErrors(['error' => 'Failed to ' . $action . ' salary sheet: ' . $e->getMessage()])
                 ->withInput();
@@ -744,6 +955,7 @@ class SalarySheetController extends Controller
                     'location' => $item->location,
                     'promoter_id' => (string) ($item->attendance_data['promoter_id'] ?? ''),
                     'promoter_name' => $item->attendance_data['promoter_name'] ?? '',
+                    'position_id' => (string) ($item->position_id ?? ''),
                     'position' => $item->attendance_data['position'] ?? ($item->position->position_name ?? ''),
                     'attendance' => $attendanceData,
                     'attendance_total' => (string) ($item->attendance_data['total'] ?? 0),
@@ -822,6 +1034,9 @@ class SalarySheetController extends Controller
                 'approved_at' => now()
             ]);
 
+            // Send email notification to officer
+            $this->sendApprovalNotificationToOfficer($salarySheet, $user);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Salary sheet ' . $salarySheet->sheet_no . ' has been approved successfully.'
@@ -842,81 +1057,124 @@ class SalarySheetController extends Controller
     }
 
     /**
-     * Send email notification to all reporters when salary sheet status is complete
+     * Send email notification when salary sheet status is complete.
+     * Sends ONLY to the job's assigned reporter.
      */
     private function sendCompleteNotificationToReporters(SalarySheet $salarySheet)
     {
         try {
             $mailDriver = config('mail.default');
 
-            // Check if mail driver is set to 'log' (emails won't actually be sent)
             if ($mailDriver === 'log') {
                 Log::warning('Mail driver is set to "log" - emails will be logged but not actually sent. Change MAIL_MAILER to "smtp" in .env to send real emails.');
             }
 
-            Log::info('=== EMAIL NOTIFICATION DEBUG START ===');
-            Log::info('Mail driver: ' . $mailDriver);
-            Log::info('Mail from: ' . config('mail.from.address'));
+            Log::info('=== SALARY SHEET COMPLETE EMAIL NOTIFICATION START ===');
 
-            // Get all users with reporter role
-            $reporters = User::role('reporter')->get();
+            $salarySheet->load(['job.client', 'job.reporter']);
 
-            Log::info('Reporters found: ' . $reporters->count());
-
-            if ($reporters->isEmpty()) {
-                Log::info('No reporters found to send salary sheet notification');
+            if (!$salarySheet->job || !$salarySheet->job->reporter) {
+                Log::warning('No reporter assigned to job for salary sheet complete notification', [
+                    'sheet_no' => $salarySheet->sheet_no,
+                    'job_id' => $salarySheet->job_id,
+                ]);
                 return;
             }
 
-            // Load relationships for email
-            $salarySheet->load(['job.client']);
+            $reporter = $salarySheet->job->reporter;
+            if (!$reporter->email) {
+                Log::warning('Reporter has no email - cannot send complete notification', [
+                    'sheet_no' => $salarySheet->sheet_no,
+                    'reporter_id' => $reporter->id,
+                ]);
+                return;
+            }
 
-            Log::info('Salary sheet loaded:', [
+            Log::info('Sending salary sheet complete notification to job reporter', [
                 'sheet_no' => $salarySheet->sheet_no,
-                'job_id' => $salarySheet->job_id,
-                'has_job' => $salarySheet->job ? 'yes' : 'no',
-                'has_client' => ($salarySheet->job && $salarySheet->job->client) ? 'yes' : 'no'
+                'job_number' => $salarySheet->job->job_number,
+                'reporter_email' => $reporter->email,
             ]);
 
-            // Send email to each reporter
-            foreach ($reporters as $reporter) {
-                try {
-                    Log::info('Attempting to send email to reporter:', [
-                        'reporter_id' => $reporter->id,
-                        'reporter_email' => $reporter->email,
-                        'reporter_name' => $reporter->name
-                    ]);
+            Mail::to($reporter->email)->send(new SalarySheetCompleteNotification($salarySheet));
 
-                    Mail::to($reporter->email)->send(new SalarySheetCompleteNotification($salarySheet));
+            Log::info('Salary sheet complete notification sent to reporter', [
+                'sheet_no' => $salarySheet->sheet_no,
+                'reporter_email' => $reporter->email,
+            ]);
+            Log::info('=== SALARY SHEET COMPLETE EMAIL NOTIFICATION END ===');
+        } catch (\Exception $e) {
+            Log::error('Failed to send salary sheet complete notification', [
+                'sheet_no' => $salarySheet->sheet_no ?? null,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+        }
+    }
 
-                    if ($mailDriver === 'log') {
-                        Log::info('Email logged (not actually sent - mail driver is "log")', [
-                            'reporter_email' => $reporter->email,
-                            'sheet_no' => $salarySheet->sheet_no
-                        ]);
-                    } else {
-                        Log::info('Salary sheet notification sent to reporter', [
-                            'reporter_email' => $reporter->email,
-                            'sheet_no' => $salarySheet->sheet_no,
-                            'mail_driver' => $mailDriver
-                        ]);
-                    }
-                } catch (\Exception $e) {
-                    Log::error('Failed to send salary sheet notification to reporter', [
-                        'reporter_email' => $reporter->email,
-                        'sheet_no' => $salarySheet->sheet_no,
-                        'error' => $e->getMessage(),
-                        'trace' => $e->getTraceAsString()
-                    ]);
+    /**
+     * Send email notification when salary sheet is approved.
+     * Sends to: job's assigned officer AND all admin users.
+     */
+    private function sendApprovalNotificationToOfficer(SalarySheet $salarySheet, $approvedBy = null)
+    {
+        try {
+            $mailDriver = config('mail.default');
+
+            if ($mailDriver === 'log') {
+                Log::warning('Mail driver is set to "log" - emails will be logged but not actually sent. Change MAIL_MAILER to "smtp" in .env to send real emails.');
+            }
+
+            Log::info('=== SALARY SHEET APPROVAL EMAIL NOTIFICATION START ===');
+
+            $salarySheet->load(['job.officer']);
+
+            $recipientEmails = [];
+
+            // 1. All admin users
+            $admins = User::role('admin')->get();
+            foreach ($admins as $admin) {
+                if ($admin->email) {
+                    $recipientEmails[$admin->email] = true;
                 }
             }
 
-            Log::info('=== EMAIL NOTIFICATION DEBUG END ===');
-        } catch (\Exception $e) {
-            Log::error('Error sending salary sheet notifications to reporters', [
+            // 2. Job's assigned officer (if any)
+            if ($salarySheet->job && $salarySheet->job->officer) {
+                $officer = $salarySheet->job->officer;
+                if ($officer->email) {
+                    $recipientEmails[$officer->email] = true;
+                }
+            }
+
+            $toAddresses = array_keys($recipientEmails);
+
+            if (empty($toAddresses)) {
+                Log::warning('No recipients for salary sheet approval notification', [
+                    'sheet_no' => $salarySheet->sheet_no,
+                    'job_id' => $salarySheet->job_id,
+                ]);
+                return;
+            }
+
+            Log::info('Sending salary sheet approval notification to officer and admins', [
                 'sheet_no' => $salarySheet->sheet_no,
+                'job_number' => $salarySheet->job?->job_number,
+                'recipients' => $toAddresses,
+            ]);
+
+            Mail::to($toAddresses)->send(new SalarySheetApprovedNotification($salarySheet, $approvedBy));
+
+            Log::info('Salary sheet approval notification sent', [
+                'sheet_no' => $salarySheet->sheet_no,
+                'recipient_count' => count($toAddresses),
+            ]);
+            Log::info('=== SALARY SHEET APPROVAL EMAIL NOTIFICATION END ===');
+        } catch (\Exception $e) {
+            Log::error('Failed to send salary sheet approval notification', [
+                'sheet_no' => $salarySheet->sheet_no ?? null,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
         }
     }

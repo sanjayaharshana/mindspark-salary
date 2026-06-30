@@ -19,13 +19,96 @@ class JobController extends Controller
         $this->middleware('permission:delete jobs')->only(['destroy']);
     }
 
+    public function ajaxSearch(Request $request)
+    {
+        $q     = trim($request->get('q', ''));
+        $limit = min((int) $request->get('limit', 15), 50);
+        $user  = auth()->user();
+
+        $query = Job::with('client');
+
+        if ($user && method_exists($user, 'hasRole') && $user->hasRole('officer')) {
+            $query->where('officer_id', $user->id);
+        }
+
+        if ($q !== '') {
+            $query->where(function ($q2) use ($q) {
+                $q2->where('job_number', 'like', "%{$q}%")
+                   ->orWhere('job_name',   'like', "%{$q}%")
+                   ->orWhereHas('client',  fn($c) => $c->where('name', 'like', "%{$q}%"));
+            });
+        }
+
+        $results = $query->orderBy('created_at', 'desc')
+            ->limit($limit)
+            ->get()
+            ->map(fn($j) => [
+                'id'         => $j->id,
+                'job_number' => $j->job_number,
+                'job_name'   => $j->job_name,
+                'start_date' => $j->start_date?->format('Y-m-d'),
+                'end_date'   => $j->end_date?->format('Y-m-d'),
+                'client'     => optional($j->client)->name,
+                'status'     => $j->status,
+            ]);
+
+        return response()->json(['data' => $results]);
+    }
+
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $jobs = Job::with(['client', 'officer', 'reporter'])->latest()->paginate(10);
-        return view('admin.jobs.index', compact('jobs'));
+        $query = Job::with(['client', 'officer', 'reporter']);
+
+        // Search: job number, job name, client name/short_code
+        if ($request->filled('search')) {
+            $term = $request->search;
+            $query->where(function ($q) use ($term) {
+                $q->where('job_number', 'like', "%{$term}%")
+                    ->orWhere('job_name', 'like', "%{$term}%")
+                    ->orWhere('description', 'like', "%{$term}%")
+                    ->orWhereHas('client', function ($q2) use ($term) {
+                        $q2->where('name', 'like', "%{$term}%")
+                            ->orWhere('short_code', 'like', "%{$term}%");
+                    });
+            });
+        }
+
+        // Filter by status
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        // Filter by officer
+        if ($request->filled('officer_id')) {
+            $query->where('officer_id', $request->officer_id);
+        }
+
+        // Filter by reporter
+        if ($request->filled('reporter_id')) {
+            $query->where('reporter_id', $request->reporter_id);
+        }
+
+        // Filter by client
+        if ($request->filled('client_id')) {
+            $query->where('client_id', $request->client_id);
+        }
+
+        $jobs = $query->latest()->paginate(15)->withQueryString();
+
+        $officers = User::role('officer')->orderBy('name')->get();
+        $reporters = User::role('reporter')->orderBy('name')->get();
+        $clients = Client::where('status', 'active')->orderBy('name')->get();
+
+        $total      = Job::count();
+        $pending    = Job::where('status', 'pending')->count();
+        $inProgress = Job::where('status', 'in_progress')->count();
+        $completed  = Job::where('status', 'completed')->count();
+        $cancelled  = Job::where('status', 'cancelled')->count();
+
+        return view('admin.jobs.index', compact('jobs', 'officers', 'reporters', 'clients', 'total', 'pending', 'inProgress', 'completed', 'cancelled'));
     }
 
     /**

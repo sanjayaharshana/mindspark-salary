@@ -30,7 +30,7 @@
 </div>
 
 <!-- Main Content Grid -->
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
     
     <!-- Campaign Count Graph (Last 6 Months) -->
     <div class="card">
@@ -44,7 +44,7 @@
             </h3>
         </div>
         <div class="card-body">
-            <canvas id="campaignChart" width="400" height="200"></canvas>
+            <canvas id="campaignChart" width="400" height="160"></canvas>
         </div>
     </div>
 
@@ -60,7 +60,7 @@
             </h3>
         </div>
         <div class="card-body">
-            <canvas id="promotersChart" width="400" height="200"></canvas>
+            <canvas id="promotersChart" width="400" height="160"></canvas>
         </div>
     </div>
 </div>
@@ -76,9 +76,9 @@
         </h3>
     </div>
     <div class="card-body">
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
-            <a href="{{ route('admin.clients.create') }}" class="btn btn-success" style="display: flex; align-items: center; justify-content: center; padding: 1rem;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.625rem;">
+            <a href="{{ route('admin.clients.create') }}" class="btn btn-success" style="display: flex; align-items: center; justify-content: center; gap: 6px; padding: 0.5rem 0.75rem; font-size: 0.8rem;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                     <circle cx="9" cy="7" r="4"></circle>
                     <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
@@ -86,16 +86,16 @@
                 </svg>
                 {{ __('common.add_new_client') }}
             </a>
-            <a href="{{ route('admin.promoters.create') }}" class="btn btn-primary" style="display: flex; align-items: center; justify-content: center; padding: 1rem;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+            <a href="{{ route('admin.promoters.create') }}" class="btn btn-primary" style="display: flex; align-items: center; justify-content: center; gap: 6px; padding: 0.5rem 0.75rem; font-size: 0.8rem;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                     <circle cx="12" cy="7" r="4"></circle>
                     <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                 </svg>
                 {{ __('common.add_new_promoter') }}
             </a>
-            <a href="{{ route('admin.coordinators.create') }}" class="btn btn-secondary" style="display: flex; align-items: center; justify-content: center; padding: 1rem;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+            <a href="{{ route('admin.coordinators.create') }}" class="btn btn-secondary" style="display: flex; align-items: center; justify-content: center; gap: 6px; padding: 0.5rem 0.75rem; font-size: 0.8rem;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
                     <circle cx="9" cy="7" r="4"></circle>
                     <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
@@ -103,8 +103,8 @@
                 </svg>
                 {{ __('common.add_new_coordinator') }}
             </a>
-            <a href="{{ route('admin.salary-sheets.create') }}" class="btn btn-warning" style="display: flex; align-items: center; justify-content: center; padding: 1rem;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+            <a href="{{ route('admin.salary-sheets.create') }}" class="btn btn-warning" style="display: flex; align-items: center; justify-content: center; gap: 6px; padding: 0.5rem 0.75rem; font-size: 0.8rem;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
                     <line x1="8" y1="21" x2="16" y2="21"></line>
                     <line x1="12" y1="17" x2="12" y2="21"></line>
@@ -185,14 +185,14 @@
 
 /* Chart styling */
 .card-body canvas {
-    max-height: 300px;
+    max-height: 200px;
     width: 100% !important;
-    height: 300px !important;
+    height: 200px !important;
 }
 
 .chart-container {
     position: relative;
-    height: 300px;
+    height: 200px;
     width: 100%;
 }
 </style>

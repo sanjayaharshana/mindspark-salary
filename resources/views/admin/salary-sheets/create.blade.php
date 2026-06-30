@@ -1,326 +1,1311 @@
 @extends('layouts.admin')
 
-@section('title', 'Create Salary Sheet')
-@section('page-title', 'Create Salary Sheet')
+@section('title', isset($editSalarySheet) ? 'Edit Salary Sheet' : 'Create Salary Sheet')
+@section('page-title', isset($editSalarySheet) ? 'Edit Salary Sheet' : 'Create Salary Sheet')
 
 @section('breadcrumbs')
     <span class="breadcrumb-separator">›</span>
     <a href="{{ route('admin.salary-sheets.index') }}" class="breadcrumb-item">Salary Sheets</a>
     <span class="breadcrumb-separator">›</span>
-    <span class="breadcrumb-item active">Create</span>
+    <span class="breadcrumb-item active">{{ isset($editSalarySheet) ? 'Edit' : 'Create' }}</span>
 @endsection
 
 @section('content')
-<form action="{{url('admin/salary-sheet-enforce')}}" method="post" id="salarySheetForm">
-    {{csrf_field()}}
-    <div class="card">
-        <div class="card-header">
-            <div class="header-title">
-                <h3>Salary Sheet Management</h3>
-                <p class="header-subtitle">Create and manage salary sheets for your organization</p>
-            </div>
-        </div>
+<style>
+/* ============================================================
+   Salary Sheet — Compact Design System (sc-*)
+   Primary: Indigo #4f46e5
+   ============================================================ */
 
-        <!-- Professional Toolbar Section -->
-        <div class="toolbar-section">
-            <div class="toolbar-container">
-                <div class="toolbar-group primary-tools">
-                    <div class="toolbar-label">Primary Actions</div>
-                    <div class="toolbar-buttons">
-                        <button type="button" id="addPromoterBtn" class="toolbar-btn toolbar-btn-success" onclick="addPromoterRow()" disabled>
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <line x1="12" y1="5" x2="12" y2="19"></line>
-                                <line x1="5" y1="12" x2="19" y2="12"></line>
-                            </svg>
-                            <span>Add Promoter Row</span>
-                        </button>
-                        <button type="button" class="toolbar-btn toolbar-btn-primary" onclick="saveSalarySheet()">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-                                <polyline points="17,21 17,13 7,13 7,21"></polyline>
-                                <polyline points="7,3 7,8 15,8"></polyline>
-                            </svg>
-                            <span>Save Salary Sheet</span>
-                        </button>
-                    </div>
-                </div>
+/* ── Info Strip ─────────────────────────────────────────────────────────── */
+.sc-info-strip {
+    display: grid;
+    grid-template-columns: 160px 1fr 150px 210px;
+    gap: .65rem;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px 10px 0 0;
+    padding: .65rem .9rem;
+    align-items: end;
+}
+@media(max-width:900px){ .sc-info-strip { grid-template-columns: 1fr 1fr; } }
+.sc-info-item { display: flex; flex-direction: column; gap: .18rem; }
+.sc-info-label {
+    font-size: .68rem; font-weight: 700; color: #6b7280;
+    text-transform: uppercase; letter-spacing: .05em;
+}
+.sc-info-input {
+    padding: .38rem .6rem;
+    border: 1px solid #d1d5db; border-radius: 6px;
+    font-size: .82rem; color: #1f2937; background: #fff;
+    outline: none; width: 100%;
+    transition: border-color .15s, box-shadow .15s;
+}
+.sc-info-input:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.1); }
+.sc-info-input[readonly] {
+    background: #f9fafb; color: #374151;
+    font-weight: 700; font-family: monospace; font-size: .8rem;
+}
 
-                <div class="toolbar-divider"></div>
+/* ── Compact Toolbar ─────────────────────────────────────────────────────── */
+.sc-toolbar {
+    display: flex; align-items: center; gap: .35rem; flex-wrap: wrap;
+    background: #f8fafc; border: 1px solid #e5e7eb; border-top: none;
+    border-radius: 0 0 10px 10px; padding: .45rem .75rem; margin-bottom: .6rem;
+}
+.sc-divider { width: 1px; height: 18px; background: #d1d5db; margin: 0 .1rem; flex-shrink: 0; }
+.sc-spacer  { flex: 1; }
 
-                <div class="toolbar-group secondary-tools">
-                    <div class="toolbar-label">Configuration</div>
-                    <div class="toolbar-buttons">
-                        <button type="button" id="salaryRuleBtn" class="toolbar-btn toolbar-btn-info" onclick="openSalaryRuleModal()" disabled>
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                                <line x1="9" y1="9" x2="15" y2="15"></line>
-                                <line x1="15" y1="9" x2="9" y2="15"></line>
-                            </svg>
-                            <span>Salary Rules</span>
-                        </button>
-                        <button type="button" id="allowanceRuleBtn" class="toolbar-btn toolbar-btn-warning" onclick="openAllowanceRuleModal()" disabled>
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
-                            </svg>
-                            <span>Allowance Rules</span>
-                        </button>
-                        <button type="button" id="addCustomDateBtn" class="toolbar-btn toolbar-btn-info" onclick="openAddCustomDateModal()" disabled>
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                                <line x1="16" y1="2" x2="16" y2="6"></line>
-                                <line x1="8" y1="2" x2="8" y2="6"></line>
-                                <line x1="3" y1="10" x2="21" y2="10"></line>
-                                <line x1="12" y1="14" x2="12" y2="18"></line>
-                                <line x1="10" y1="16" x2="14" y2="16"></line>
-                            </svg>
-                            <span>Add Custom Date</span>
-                        </button>
-                        <button type="button" class="toolbar-btn toolbar-btn-secondary" onclick="openJobSettingsModal()">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="12" cy="12" r="3"></circle>
-                                <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"></path>
-                            </svg>
-                            <span>Job Settings</span>
-                        </button>
-                    </div>
-                </div>
+.sc-btn {
+    display: inline-flex; align-items: center; gap: .28rem;
+    padding: .28rem .65rem; border: 1px solid transparent;
+    border-radius: 5px; font-size: .77rem; font-weight: 600;
+    cursor: pointer; transition: all .12s; white-space: nowrap;
+    text-decoration: none; line-height: 1.4;
+}
+.sc-btn:disabled { opacity: .45; cursor: not-allowed; pointer-events: none; }
+.sc-btn svg { flex-shrink: 0; }
 
-                <div class="toolbar-divider"></div>
+.sc-btn-green  { background: #d1fae5; color: #065f46; border-color: #6ee7b7; }
+.sc-btn-green:hover  { background: #a7f3d0; border-color: #34d399; }
+.sc-btn-indigo { background: #e0e7ff; color: #3730a3; border-color: #c7d2fe; }
+.sc-btn-indigo:hover { background: #c7d2fe; border-color: #a5b4fc; }
+.sc-btn-amber  { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+.sc-btn-amber:hover  { background: #fde68a; border-color: #fcd34d; }
+.sc-btn-sky    { background: #e0f2fe; color: #075985; border-color: #bae6fd; }
+.sc-btn-sky:hover    { background: #bae6fd; border-color: #7dd3fc; }
+.sc-btn-gray   { background: #f3f4f6; color: #374151; border-color: #e5e7eb; }
+.sc-btn-gray:hover   { background: #e5e7eb; border-color: #d1d5db; }
+.sc-btn-solid  { background: #4f46e5; color: #fff; border-color: #4f46e5; }
+.sc-btn-solid:hover  { background: #4338ca; border-color: #4338ca; }
 
-                <div class="toolbar-group utility-tools">
-                    <div class="toolbar-label">Utilities</div>
-                    <div class="toolbar-buttons">
-                        <button type="button" class="toolbar-btn toolbar-btn-outline" onclick="pullExistingData()">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                <polyline points="14,2 14,8 20,8"></polyline>
-                                <line x1="16" y1="13" x2="8" y2="13"></line>
-                                <line x1="16" y1="17" x2="8" y2="17"></line>
-                                <polyline points="10,9 9,9 8,9"></polyline>
-                            </svg>
-                            <span>Pull Data</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="card-body">
-                <!-- Basic Information -->
-                <div style="background: #f8fafc; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem;">
-                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 1rem;">
-                        <div>
-                            <label style="font-size: 0.75rem; color: #6b7280; font-weight: 600;">SHEET NO</label>
-                            <input type="text" class="form-control" id="sheet_number" name="sheet_number" readonly style="background: #f9fafb; font-weight: bold;" placeholder="Auto-generated">
-                        </div>
-                        <div>
-                            <label style="font-size: 0.75rem; color: #6b7280; font-weight: 600;">JOB ID</label>
-                            <select class="form-control" id="job_id" name="job_id" onchange="updateAttendanceDates()">
-                                <option value="">Select Job</option>
-                                @foreach($jobs as $job)
-                                    <option value="{{ $job->id }}" data-start-date="{{ $job->start_date }}" data-end-date="{{ $job->end_date }}">{{ $job->job_number }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div style="display: none">
-                            <label style="font-size: 0.75rem; color: #6b7280; font-weight: 600;">PULL DATA</label>
-                            <button type="button" class="btn btn-success btn-sm" id="pullDataBtn" onclick="pullExistingData()" disabled style="width: 100%;">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;">
-                                    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
-                                    <path d="M21 3v5h-5"></path>
-                                    <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
-                                    <path d="M3 21v-5h5"></path>
-                                </svg>
-                                Pull Data
-                            </button>
-                        </div>
-                        <div>
-                            <label style="font-size: 0.75rem; color: #6b7280; font-weight: 600;">STATUS</label>
-                            <select class="form-control" name="status" required>
-                                <option value="">Select Status</option>
-                                <option value="draft" selected>Draft</option>
-                                <option value="complete">Complete</option>
-                                <option value="reject">Reject</option>
-                                <option value="approve">Approve</option>
-                                <option value="paid">Paid</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label style="font-size: 0.75rem; color: #6b7280; font-weight: 600;">LOCATION</label>
-                            <input type="text" class="form-control" name="location" placeholder="Enter location">
-                        </div>
-                    </div>
-                </div>
+/* ── Message Boxes ───────────────────────────────────────────────────────── */
+.sc-msg-empty {
+    text-align: center; padding: 2rem 1.5rem;
+    background: #f8fafc; border: 2px dashed #cbd5e1;
+    border-radius: 10px; margin: .4rem 0;
+}
+.sc-msg-empty h3 { color: #475569; font-size: .92rem; margin: 0 0 .2rem; }
+.sc-msg-empty p  { color: #64748b; font-size: .8rem;  margin: 0; }
 
-                <!-- No Job Selected Message -->
-                <div id="noJobMessage" style="text-align: center; padding: 3rem; background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 0.5rem; margin: 1rem 0;">
-                    <div style="color: #64748b; font-size: 1.1rem; margin-bottom: 0.5rem;">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto 1rem auto; display: block;">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <path d="M12 6v6l4 2"></path>
-                        </svg>
-                    </div>
-                    <h3 style="color: #475569; margin-bottom: 0.5rem;">Please Select a Job ID</h3>
-                    <p style="color: #64748b; margin: 0;">Choose a job from the dropdown above to start creating the salary sheet.</p>
-                </div>
+.sc-msg-warn {
+    display: flex; align-items: center; gap: .65rem;
+    padding: .6rem .9rem; background: #fffbeb;
+    border: 1px solid #fcd34d; border-radius: 8px;
+    margin: .4rem 0; font-size: .8rem; color: #92400e; font-weight: 500;
+}
 
-                <!-- No End Date Message -->
-                <div id="noEndDateMessage" style="display: none; text-align: center; padding: 1.5rem; background: #fef3c7; border: 2px solid #f59e0b; border-radius: 0.5rem; margin: 1rem 0;">
-                    <div style="color: #92400e; font-size: 1rem; margin-bottom: 0.5rem;">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin: 0 auto 0.5rem auto; display: block;">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <line x1="12" y1="8" x2="12" y2="12"></line>
-                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                        </svg>
-                    </div>
-                    <p style="color: #92400e; margin: 0; font-weight: 500;">This project not assigned to ending date</p>
-                </div>
+/* ── Scroll Nav ──────────────────────────────────────────────────────────── */
+.sc-scroll-nav {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: .3rem .7rem; background: #f1f5f9;
+    border-bottom: 1px solid #e2e8f0; border-radius: 8px 8px 0 0;
+}
+.sc-scroll-btns { display: flex; gap: .3rem; }
+.sc-scroll-btn {
+    background: #4f46e5; color: #fff; border: none;
+    padding: .28rem; border-radius: 4px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    width: 26px; height: 26px; transition: background .12s;
+}
+.sc-scroll-btn:hover { background: #4338ca; }
+.sc-scroll-btn:disabled { background: #9ca3af; cursor: not-allowed; }
+.sc-scroll-info { display: flex; align-items: center; gap: .4rem; font-size: .7rem; color: #64748b; }
+.sc-scroll-progress { width: 120px; height: 3px; background: #e2e8f0; border-radius: 2px; overflow: hidden; }
+.sc-scroll-progress-fill { height: 100%; background: #4f46e5; transition: width .2s; width: 0; }
 
-                <!-- Salary Sheet Table -->
-                <div id="salaryTableContainer" style="display: none;">
-                    <!-- Scroll Navigation Panel -->
-                    <div class="scroll-navigation">
-                        <div class="scroll-controls">
-                            <button type="button" class="scroll-btn" id="scrollLeftBtn" title="Scroll Left">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <polyline points="15,18 9,12 15,6"></polyline>
-                                </svg>
-                            </button>
-                            <button type="button" class="scroll-btn" id="scrollRightBtn" title="Scroll Right">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <polyline points="9,18 15,12 9,6"></polyline>
-                                </svg>
-                            </button>
-                            <button type="button" class="scroll-btn" id="scrollToStartBtn" title="Scroll to Start">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <polyline points="11,17 6,12 11,7"></polyline>
-                                    <polyline points="18,17 13,12 18,7"></polyline>
-                                </svg>
-                            </button>
-                            <button type="button" class="scroll-btn" id="scrollToEndBtn" title="Scroll to End">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <polyline points="13,17 18,12 13,7"></polyline>
-                                    <polyline points="6,17 11,12 6,7"></polyline>
-                                </svg>
-                            </button>
-                        </div>
-                        <div class="scroll-indicator">
-                            <span id="scrollPosition">0%</span>
-                            <div class="scroll-progress">
-                                <div class="scroll-progress-bar" id="scrollProgressBar"></div>
-                            </div>
-                            <span id="scrollInfo" title="Use mouse drag, touch swipe, arrow keys, or buttons to scroll horizontally">Scroll to navigate</span>
-                        </div>
-                    </div>
+/* ── Table Wrapper ───────────────────────────────────────────────────────── */
+.table-scroll-container {
+    overflow-x: auto; overflow-y: auto;
+    border-radius: 0 0 8px 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    background: #fff; margin-top: 0;
+    max-height: 66vh;
+    scroll-behavior: smooth;
+    touch-action: pan-x;
+    -webkit-overflow-scrolling: touch;
+}
+.table-scroll-container::-webkit-scrollbar { height: 5px; width: 5px; }
+.table-scroll-container::-webkit-scrollbar-track { background: #f1f5f9; }
+.table-scroll-container::-webkit-scrollbar-thumb { background: #c7d2fe; border-radius: 3px; }
+.table-scroll-container::-webkit-scrollbar-thumb:hover { background: #a5b4fc; }
+.table-scroll-container::-webkit-scrollbar-corner { background: #f1f5f9; }
+.table-scroll-container:not(.dragging) { cursor: grab; }
+.table-scroll-container.dragging { cursor: grabbing !important; user-select: none; }
+.table-scroll-container.dragging * { pointer-events: none; }
+.table-scroll-container input,
+.table-scroll-container select,
+.table-scroll-container textarea,
+.table-scroll-container button { pointer-events: auto !important; cursor: default !important; }
+.table-scroll-container.dragging input,
+.table-scroll-container.dragging select,
+.table-scroll-container.dragging textarea,
+.table-scroll-container.dragging button { pointer-events: auto !important; cursor: default !important; }
 
-                    <!-- Table Scroll Container -->
-                    <div class="table-scroll-container" id="tableScrollContainer">
-                        <table class="salary-sheet-table" id="salaryTable">
-                            <thead>
-                            <tr>
-                                <th style="width: 60px;">No</th>
-                                <th style="width: 150px;">Location</th>
-                                <th style="width: 400px;">Promoter Details</th>
-                                <th style="width: 350px;">Bank Details</th>
-                                <th style="width: 700px;">Attendance</th>
-                                <th style="width: 600px;">Payments</th>
-                                <th style="width: 400px;">Coordinator Details</th>
-                            </tr>
-                            <tr class="sub-header">
-                                <th></th>
-                                <th></th>
-                                <th>
-                                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;width: 700px;">
-                                        <div style="text-align: center; font-size: 0.7rem;">Promoter ID</div>
-                                        <div style="text-align: center; font-size: 0.7rem;">Promoter Name</div>
-                                        <div style="text-align: center; font-size: 0.7rem;">Position</div>
-                                    </div>
-                                </th>
-                                <th>
-                                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;width: 533px;">
-                                        <div style="text-align: center; font-size: 0.7rem;">Bank Name</div>
-                                        <div style="text-align: center; font-size: 0.7rem;">Bank Branch</div>
-                                        <div style="text-align: center; font-size: 0.7rem;">Bank Number</div>
-                                    </div>
-                                </th>
-                                <th id="attendanceColumn" style="display: none;">
-                                    <div id="attendanceHeaders" style="display: grid;grid-template-columns: repeat(6, 1fr) 1fr 1.5fr;gap: 0.75rem;width: 839px;">
-                                        <div style="text-align: center; font-size: 0.7rem;">Select Job First</div>
-                                        <div style="text-align: center; font-size: 0.7rem;">Select Job First</div>
-                                        <div style="text-align: center; font-size: 0.7rem;">Select Job First</div>
-                                        <div style="text-align: center; font-size: 0.7rem;">Select Job First</div>
-                                        <div style="text-align: center; font-size: 0.7rem;">Select Job First</div>
-                                        <div style="text-align: center; font-size: 0.7rem;">Select Job First</div>
-                                        <div style="text-align: center; font-size: 0.7rem;">Total</div>
-                                        <div style="text-align: center; font-size: 0.7rem;">Amount</div>
-                                    </div>
-                                </th>
-                                <th id="paymentColumn">
-                                    <div id="paymentHeaders" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem;width: 533px;">
-                                        <div style="text-align: center; font-size: 0.7rem;">Amount</div>
-                                        <div style="text-align: center; font-size: 0.7rem;">Expenses</div>
-                                        <div style="text-align: center; font-size: 0.7rem;">Hold For 8 weeks</div>
-                                        <div style="text-align: center; font-size: 0.7rem;">Net Amount</div>
-                                    </div>
-                                </th>
-                                <th>
-                                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;width: 500px;">
-                                        <div style="text-align: center; font-size: 0.7rem;">Coordinator ID</div>
-                                        <div style="text-align: center; font-size: 0.7rem;">Current Coordinator</div>
-                                        <div style="text-align: center; font-size: 0.7rem;">Coordination Fee</div>
-                                    </div>
-                                </th>
-                            </tr>
-                            </thead>
-                            <tbody id="promoterRows">
-                            <!-- Rows will be added dynamically -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+/* ── Salary Sheet Table ──────────────────────────────────────────────────── */
+.salary-sheet-table {
+    width: 100%; border-collapse: collapse;
+    font-size: .78rem; background: #fff;
+    border: 1px solid #e5e7eb;
+}
+.salary-sheet-table thead { position: sticky; top: 0; z-index: 10; }
+.salary-sheet-table th {
+    background: #312e81; color: #fff;
+    padding: .55rem .7rem; text-align: center;
+    font-weight: 600; font-size: .72rem;
+    border: 1px solid #3730a3;
+    position: sticky; top: 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,.12);
+}
+.salary-sheet-table .sub-header th {
+    background: #4f46e5; padding: .38rem .55rem;
+    font-size: .65rem; position: sticky; top: 33px; z-index: 9;
+    box-shadow: 0 2px 4px rgba(0,0,0,.08);
+}
+.salary-sheet-table .sub-header th div { color: #fff; font-weight: 500; }
+.salary-sheet-table td {
+    padding: .4rem .5rem; border: 1px solid #e5e7eb;
+    vertical-align: middle; background: #fff;
+}
+.salary-sheet-table tbody tr:nth-child(even) td { background: #f8fafc; }
+.salary-sheet-table tbody tr:nth-child(even) td.calculated-cell { background: #ede9fe; }
+.salary-sheet-table tbody tr:hover td { background: #eef2ff !important; }
 
-                <!-- Attendance Legend -->
-                <div id="attendanceLegend" style="display: none; background: #f0f9ff; padding: 0.75rem; border-radius: 0.5rem; margin: 0.5rem 0; border-left: 4px solid #3b82f6;">
-                    <div style="display: flex; align-items: center; gap: 1rem; font-size: 0.875rem; color: #1e40af;">
-                        <div style="display: flex; align-items: center; gap: 0.5rem;">
-                            <div style="width: 20px; height: 20px; background: #d1fae5; border: 1px solid #059669; border-radius: 3px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #059669;">1</div>
-                            <span>Present</span>
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 0.5rem;">
-                            <div style="width: 20px; height: 20px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 3px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #f59e0b;">0</div>
-                            <span>Absent</span>
-                        </div>
-                        <span style="color: #6b7280;">• Only enter 0 or 1 in attendance fields</span>
-                        <span style="color: #059669; font-weight: 500;">• Attendance Amount = Position Salary × Present Days</span>
-                    </div>
-                </div>
+/* ── Table Inputs ────────────────────────────────────────────────────────── */
+.table-input {
+    width: 100%; padding: .38rem .45rem;
+    border: 1px solid #d1d5db; border-radius: 4px;
+    font-size: .78rem; background: #fff; text-align: center;
+    outline: none; transition: border-color .1s;
+}
+.table-input:focus { border-color: #6366f1; box-shadow: 0 0 0 2px rgba(99,102,241,.1); }
+.table-input-small {
+    width: 100%; padding: .26rem .35rem;
+    border: 1px solid #d1d5db; border-radius: 4px;
+    font-size: .72rem; background: #fff; text-align: center;
+    outline: none; transition: border-color .1s;
+}
+.table-input-small:focus { border-color: #6366f1; box-shadow: 0 0 0 2px rgba(99,102,241,.08); }
+.table-input-readonly { background: #f9fafb !important; font-weight: 600; color: #374151; }
+.calculated-cell { background: #ede9fe !important; }
+.table-input-small[placeholder="0/1"] {
+    text-align: center; font-weight: 700;
+    background: #fef9c3; border-color: #fcd34d; color: #78350f;
+}
+.table-input-small[name*="[attendance_amount]"] {
+    text-align: right; font-weight: 600; font-family: monospace;
+}
+.table-input-small[name*="[amount]"][readonly] {
+    text-align: right; font-weight: 600; font-family: monospace;
+    background: #ede9fe; border-color: #a5b4fc;
+}
 
-                <!-- Summary Section -->
-                <div style="background: #f0f9ff; padding: 1rem; border-radius: 0.5rem; margin-top: 1rem;">
-                    <h4 style="margin-bottom: 0.5rem; color: #1e40af;">Salary Summary</h4>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
-                        <div>
-                            <span style="color: #6b7280;">Total Earnings:</span>
-                            <span id="total-earnings" style="font-weight: bold; color: #2563eb; font-size: 1.1rem;">Rs. 0.00</span>
-                        </div>
-                        <div>
-                            <span style="color: #6b7280;">Total Deductions:</span>
-                            <span id="total-deductions" style="font-weight: bold; color: #dc2626; font-size: 1.1rem;">Rs. 0.00</span>
-                        </div>
-                        <div>
-                            <span style="color: #6b7280;">Net Salary:</span>
-                            <span id="net-salary" style="font-weight: bold; color: #059669; font-size: 1.2rem;">Rs. 0.00</span>
-                        </div>
-                    </div>
-                </div>
+/* ── Attendance Legend ───────────────────────────────────────────────────── */
+.sc-legend {
+    display: flex; align-items: center; gap: .9rem; flex-wrap: wrap;
+    background: #eff6ff; border: 1px solid #bfdbfe;
+    border-radius: 7px; padding: .38rem .7rem;
+    margin: .3rem 0; font-size: .77rem; color: #1e40af;
+}
+.sc-legend-item { display: flex; align-items: center; gap: .3rem; }
+.sc-legend-box {
+    width: 17px; height: 17px; border-radius: 3px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: .7rem;
+}
 
-                <!-- Notes Section -->
-                <div style="margin-top: 1rem;">
-                    <label style="font-size: 0.75rem; color: #6b7280; font-weight: 600;">NOTES</label>
-                    <textarea class="form-control" name="notes" rows="3" placeholder="Additional notes or comments..."></textarea>
-                </div>
+/* ── Summary Cards ───────────────────────────────────────────────────────── */
+.sc-summary {
+    display: grid; grid-template-columns: repeat(3,1fr);
+    gap: .6rem; margin-top: .6rem;
+}
+@media(max-width:768px){ .sc-summary { grid-template-columns: 1fr; } }
+.sc-summary-card {
+    background: #fff; border: 1px solid #e5e7eb;
+    border-radius: 8px; padding: .55rem .9rem;
+    display: flex; justify-content: space-between; align-items: center;
+}
+.sc-summary-label { font-size: .73rem; font-weight: 600; color: #6b7280; }
+.sc-summary-val   { font-size: .98rem; font-weight: 700; }
+.sc-summary-blue  { border-left: 3px solid #3b82f6; }
+.sc-summary-blue  .sc-summary-val { color: #2563eb; }
+.sc-summary-red   { border-left: 3px solid #ef4444; }
+.sc-summary-red   .sc-summary-val { color: #dc2626; }
+.sc-summary-green { border-left: 3px solid #10b981; }
+.sc-summary-green .sc-summary-val { color: #059669; }
+
+/* ── Notes ───────────────────────────────────────────────────────────────── */
+.sc-notes { margin-top: .6rem; }
+.sc-notes-label {
+    font-size: .68rem; font-weight: 700; color: #6b7280;
+    text-transform: uppercase; letter-spacing: .05em;
+    display: block; margin-bottom: .28rem;
+}
+.sc-notes-input {
+    width: 100%; padding: .5rem .65rem;
+    border: 1px solid #d1d5db; border-radius: 7px;
+    font-size: .82rem; resize: vertical; outline: none;
+    transition: border-color .15s; box-sizing: border-box;
+}
+.sc-notes-input:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.1); }
+
+/* ── Modals ──────────────────────────────────────────────────────────────── */
+.modal {
+    position: fixed; z-index: 1000; left: 0; top: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,.5); backdrop-filter: blur(3px);
+}
+.modal-content {
+    background: #fff; margin: 5% auto; padding: 0;
+    border-radius: 10px; width: 80%; max-width: 800px;
+    box-shadow: 0 20px 40px rgba(0,0,0,.15);
+    animation: modalSlideIn .22s ease-out;
+}
+@keyframes modalSlideIn {
+    from { opacity: 0; transform: translateY(-24px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.modal-header {
+    padding: .9rem 1.1rem; border-bottom: 1px solid #e5e7eb;
+    display: flex; justify-content: space-between; align-items: center;
+    background: #f8fafc; border-radius: 10px 10px 0 0;
+}
+.modal-header h3 { margin: 0; color: #1f2937; font-size: .95rem; font-weight: 700; }
+.close { color: #9ca3af; font-size: 1.4rem; font-weight: 700; cursor: pointer; line-height: 1; }
+.close:hover { color: #374151; }
+.modal-body {
+    padding: 1.1rem; max-height: 70vh; overflow-y: auto;
+}
+.modal-footer {
+    padding: .65rem 1.1rem; border-top: 1px solid #e5e7eb;
+    display: flex; justify-content: flex-end; gap: .45rem;
+    background: #f8fafc; border-radius: 0 0 10px 10px;
+}
+
+/* ── Generic Form Controls (used in modals) ──────────────────────────────── */
+.form-control {
+    width: 100%; padding: .42rem .58rem;
+    border: 1px solid #d1d5db; border-radius: 6px;
+    font-size: .82rem; background: #fff; outline: none;
+}
+.form-control:focus { border-color: #6366f1; box-shadow: 0 0 0 2px rgba(99,102,241,.1); }
+.form-label  { font-weight: 600; color: #374151; margin-bottom: .3rem; display: block; font-size: .82rem; }
+.form-text   { font-size: .7rem; color: #6b7280; margin-top: .18rem; }
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+.btn {
+    display: inline-flex; align-items: center; gap: .32rem;
+    padding: .42rem .85rem; border: 1px solid transparent;
+    border-radius: 6px; font-size: .8rem; font-weight: 600;
+    cursor: pointer; transition: all .13s; text-decoration: none;
+}
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn-sm   { padding: .28rem .58rem; font-size: .73rem; }
+.btn-primary   { background: #4f46e5; color: #fff; border-color: #4f46e5; }
+.btn-primary:hover   { background: #4338ca; border-color: #4338ca; }
+.btn-success   { background: #10b981; color: #fff; }
+.btn-success:hover   { background: #059669; }
+.btn-secondary { background: #6b7280; color: #fff; }
+.btn-secondary:hover { background: #4b5563; }
+.btn-danger    { background: #ef4444; color: #fff; }
+.btn-danger:hover    { background: #dc2626; }
+.btn-outline   { background: #fff; color: #6b7280; border: 1px solid #d1d5db; }
+.btn-outline:hover   { background: #f9fafb; }
+
+.btn-duplicate {
+    background: #4f46e5; color: #fff;
+    padding: .2rem .42rem; border: none; border-radius: 4px;
+    cursor: pointer; display: inline-flex; align-items: center;
+    justify-content: center; transition: background .12s;
+}
+.btn-duplicate:hover { background: #4338ca; }
+
+/* ── Modal rule rows ──────────────────────────────────────────────────────── */
+.salary-rule-row {
+    display: grid; grid-template-columns: 2fr 2fr 1fr 1fr auto;
+    gap: .7rem; align-items: center; padding: .7rem;
+    margin-bottom: .6rem; background: #f8fafc;
+    border: 1px solid #e5e7eb; border-radius: 7px;
+}
+.salary-rule-row select, .salary-rule-row input {
+    padding: .4rem .55rem; border: 1px solid #d1d5db;
+    border-radius: 5px; font-size: .8rem;
+}
+.existing-rule-row {
+    display: grid; grid-template-columns: 2fr 1fr 1fr auto;
+    gap: .7rem; align-items: center; padding: .7rem;
+    margin-bottom: .6rem; background: #eff6ff;
+    border: 1px solid #bfdbfe; border-radius: 7px;
+}
+.existing-rule-row .rule-info {
+    padding: .4rem .55rem; background: #f8fafc;
+    border: 1px solid #d1d5db; border-radius: 5px;
+    font-size: .8rem; color: #374151;
+}
+.remove-rule-btn, .delete-rule-btn {
+    background: #ef4444; color: #fff; border: none;
+    border-radius: 5px; padding: .4rem;
+    cursor: pointer; width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+}
+.remove-rule-btn:hover, .delete-rule-btn:hover { background: #dc2626; }
+.allowance-rule-row {
+    display: flex; align-items: center; gap: .45rem;
+    padding: .45rem .6rem; border: 1px solid #e5e7eb;
+    border-radius: 6px; margin-bottom: .45rem; background: #fafafa;
+}
+
+/* ── Tab navigation (used in Job Settings modal) ─────────────────────────── */
+.tab-navigation { display: flex; border-bottom: 2px solid #e5e7eb; margin-bottom: 1.1rem; }
+.tab-btn {
+    background: none; border: none; padding: .55rem 1.1rem;
+    cursor: pointer; border-bottom: 3px solid transparent;
+    color: #6b7280; font-weight: 600; font-size: .8rem;
+    display: flex; align-items: center; gap: .35rem; transition: all .13s;
+    margin-bottom: -2px;
+}
+.tab-btn:hover { color: #374151; background: #f9fafb; }
+.tab-btn.active { color: #4f46e5; border-bottom-color: #4f46e5; background: #eef2ff; }
+.tab-content { display: none; } .tab-content.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+.tab-content.active { animation: fadeIn .2s ease-out; }
+
+/* ── Tooltip ──────────────────────────────────────────────────────────────── */
+.promoter-tooltip { position: relative; cursor: help; }
+.tooltip-container {
+    position: absolute; bottom: calc(100% + 10px); left: 50%;
+    transform: translateX(-50%); background: #1f2937; color: #fff;
+    padding: 9px 13px; border-radius: 7px; font-size: .77rem;
+    line-height: 1.4; opacity: 0; visibility: hidden;
+    transition: all .2s; z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0,0,0,.2);
+    min-width: 250px; max-width: 360px; white-space: normal;
+}
+.tooltip-container::after {
+    content: ''; position: absolute; top: 100%; left: 50%;
+    transform: translateX(-50%); border: 5px solid transparent;
+    border-top-color: #1f2937;
+}
+.tooltip-container.show { opacity: 1; visibility: visible; }
+.tooltip-header { font-weight: 700; font-size: .82rem; border-bottom: 1px solid #374151; padding-bottom: 4px; margin-bottom: 4px; }
+.tooltip-row { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 2px; }
+.tooltip-label { color: #9ca3af; font-size: .72rem; min-width: 55px; }
+.tooltip-value { color: #fff; font-size: .72rem; text-align: right; flex: 1; }
+.tooltip-status { display: inline-block; padding: 1px 6px; border-radius: 10px; font-size: .68rem; font-weight: 600; }
+.tooltip-status.active { background: #10b981; }
+.tooltip-status.inactive { background: #6b7280; }
+.tooltip-status.suspended { background: #f59e0b; }
+@media(max-width:768px){
+    .tooltip-container { left: 0; transform: none; }
+    .tooltip-container::after { left: 16px; transform: none; }
+}
+
+/* ── Modal Preloader ──────────────────────────────────────────────────────── */
+.modal-preloader {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(255,255,255,.95); display: flex;
+    align-items: center; justify-content: center;
+    z-index: 1000; border-radius: 10px;
+}
+.preloader-content { text-align: center; padding: 1.5rem; }
+.preloader-spinner {
+    width: 30px; height: 30px; border: 3px solid #e5e7eb;
+    border-top-color: #4f46e5; border-radius: 50%;
+    animation: spin 1s linear infinite; margin: 0 auto .6rem;
+}
+.preloader-text { color: #6b7280; font-size: .8rem; margin: 0; }
+
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .5; } }
+
+/* ── Full-Screen Mode ─────────────────────────────────────────────────────── */
+body.sc-fullscreen .sidebar              { display: none !important; }
+body.sc-fullscreen .main-content        { margin-left: 0 !important; }
+body.sc-fullscreen .header              { display: none !important; }
+body.sc-fullscreen .breadcrumb-container{ display: none !important; }
+body.sc-fullscreen .content             { padding: 0 !important; }
+
+/* ── Fullscreen: pin header bar to top ── */
+body.sc-fullscreen #sc-header-bar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 300;
+    box-shadow: 0 2px 12px rgba(0,0,0,.14);
+}
+
+/* ── Fullscreen info strip: equal-width grid ── */
+body.sc-fullscreen .sc-info-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: .55rem;
+    padding: .35rem 1rem .32rem;
+    border-radius: 0;
+    border-left: none; border-right: none; border-top: none;
+    border-bottom: 1px solid #e5e7eb;
+    background: #fff;
+}
+body.sc-fullscreen .sc-info-label {
+    font-size: .59rem;
+    letter-spacing: .05em;
+}
+/* All inputs same height and font */
+body.sc-fullscreen .sc-info-input {
+    height: 29px;
+    padding: 0 .5rem;
+    font-size: .78rem;
+    box-sizing: border-box;
+}
+body.sc-fullscreen .sc-info-input[readonly] {
+    font-size: .74rem;
+    letter-spacing: .02em;
+}
+/* no native selects in header — rule removed */
+
+/* ── Fullscreen toolbar: tight & flush ── */
+body.sc-fullscreen #sc-toolbar {
+    border-radius: 0;
+    border-left: none; border-right: none;
+    padding: .22rem .9rem;
+    margin-bottom: 0;
+    background: #f8fafc;
+}
+body.sc-fullscreen #sc-toolbar .sc-btn {
+    padding: .2rem .55rem;
+    font-size: .72rem;
+}
+body.sc-fullscreen #sc-toolbar .sc-divider { height: 14px; }
+
+/* ── Push body below fixed header ── */
+body.sc-fullscreen #sc-form-body {
+    padding-top: 90px;
+    padding-left: .75rem;
+    padding-right: .75rem;
+    padding-bottom: 68px; /* space for fixed summary bar */
+}
+body.sc-fullscreen .sc-summary {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 290;
+    display: flex; gap: 0; margin-top: 0;
+    background: #fff; border-top: 1px solid #e5e7eb;
+    box-shadow: 0 -2px 12px rgba(0,0,0,.08);
+}
+body.sc-fullscreen .sc-summary-card {
+    flex: 1; border-radius: 0; border: none; border-right: 1px solid #e5e7eb;
+    padding: .38rem 1.2rem;
+}
+body.sc-fullscreen .sc-summary-card:last-child { border-right: none; }
+body.sc-fullscreen .sc-summary-label { font-size: .68rem; }
+body.sc-fullscreen .sc-summary-val   { font-size: .88rem; }
+
+/* ── Hide the floating exit button — toolbar button handles it ── */
+#sc-exit-fullscreen { display: none !important; }
+
+/* ── Status Custom Dropdown ── */
+.sc-status-wrapper { position: relative; }
+.sc-status-btn {
+    display: flex; align-items: center; justify-content: space-between; gap: .25rem;
+    cursor: pointer; text-align: left; padding: 0 .6rem;
+    width: 100%; box-sizing: border-box; height: 34px;
+    border: 1px solid #d1d5db; border-radius: 6px;
+    background: #fff; font-size: .82rem; color: #1f2937; outline: none;
+    transition: border-color .15s, box-shadow .15s;
+}
+.sc-status-btn:hover, .sc-status-btn:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.1); }
+.sc-status-dropdown {
+    position: absolute; top: 100%; left: 0; right: 0; z-index: 9100;
+    background: #fff; border: 1px solid #d1d5db; border-top: none;
+    border-radius: 0 0 8px 8px; box-shadow: 0 8px 24px rgba(0,0,0,.12);
+    overflow: hidden; display: none;
+}
+.sc-status-option {
+    padding: .42rem .75rem; cursor: pointer; font-size: .8rem;
+    color: #1e293b; transition: background .1s;
+}
+.sc-status-option:hover, .sc-status-option.sc-status-active { background: #eff6ff; color: #4f46e5; }
+body.sc-fullscreen .sc-status-btn { height: 29px; font-size: .78rem; padding: 0 .5rem; }
+
+/* ── Job AJAX Search ── */
+.sc-job-wrapper { position: relative; }
+.sc-job-suggestions {
+    position: absolute; top: 100%; left: 0; right: 0; z-index: 9000;
+    background: #fff; border: 1px solid #d1d5db; border-top: none;
+    border-radius: 0 0 8px 8px; box-shadow: 0 8px 24px rgba(0,0,0,.12);
+    max-height: 280px; overflow-y: auto; display: none;
+}
+.sc-job-item {
+    padding: .5rem .75rem; cursor: pointer;
+    border-bottom: 1px solid #f3f4f6; transition: background .1s;
+}
+.sc-job-item:last-child { border-bottom: none; }
+.sc-job-item:hover, .sc-job-item.sc-job-active { background: #eff6ff; }
+.sc-job-item-num  { font-size: .8rem; font-weight: 700; color: #1e293b; font-family: monospace; }
+.sc-job-item-name { font-size: .74rem; color: #475569; margin-top: .05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sc-job-item-meta { font-size: .68rem; color: #94a3b8; margin-top: .05rem; }
+.sc-job-item-empty { padding: .6rem .75rem; font-size: .8rem; color: #94a3b8; text-align: center; }
+
+/* ── Existing Sheets Picker ── */
+#sc-sheets-picker { background:#fff; border:1px solid #e2e8f0; border-radius:12px; overflow:hidden; margin-bottom:.75rem; box-shadow:0 1px 6px rgba(0,0,0,.06); }
+.sc-picker-header { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:.9rem 1.1rem; background:linear-gradient(135deg,#f8faff 0%,#eef3ff 100%); border-bottom:1px solid #dde5f7; flex-wrap:wrap; }
+.sc-picker-header-left { display:flex; align-items:center; gap:.65rem; }
+.sc-picker-header-icon { width:34px; height:34px; border-radius:8px; background:#4f46e5; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.sc-picker-title { font-size:.88rem; font-weight:700; color:#1e293b; margin:0 0 .12rem; }
+.sc-picker-sub { font-size:.72rem; color:#64748b; margin:0; }
+.sc-picker-list { padding:.65rem .75rem; display:flex; flex-direction:column; gap:.5rem; }
+.sc-picker-card {
+    display:flex; align-items:center; gap:.85rem;
+    background:#fff; border:1px solid #e5e7eb; border-radius:9px;
+    padding:.65rem .9rem; border-left-width:4px;
+    transition:box-shadow .15s, border-color .15s;
+    box-shadow:0 1px 3px rgba(0,0,0,.04);
+}
+.sc-picker-card:hover { box-shadow:0 3px 10px rgba(0,0,0,.1); border-color:#c7d2fe; }
+.sc-picker-icon { width:32px; height:32px; border-radius:7px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.sc-picker-meta { flex:1; min-width:0; }
+.sc-picker-sheet-no { font-family:monospace; font-size:.84rem; font-weight:700; color:#1e293b; letter-spacing:.02em; }
+.sc-picker-info { font-size:.71rem; color:#94a3b8; margin-top:.18rem; display:flex; align-items:center; gap:.4rem; flex-wrap:wrap; }
+.sc-picker-info-sep { opacity:.4; }
+.sc-picker-badge { display:inline-flex; align-items:center; padding:.1rem .45rem; border-radius:20px; font-size:.64rem; font-weight:700; text-transform:capitalize; letter-spacing:.03em; }
+.sc-picker-actions { display:flex; gap:.3rem; flex-shrink:0; }
+.sc-picker-action-btn { display:inline-flex; align-items:center; gap:.28rem; padding:.3rem .6rem; border-radius:6px; font-size:.74rem; font-weight:600; cursor:pointer; border:1px solid transparent; text-decoration:none; transition:all .15s; white-space:nowrap; }
+.sc-picker-btn-view { background:#f8fafc; border-color:#e2e8f0; color:#475569; }
+.sc-picker-btn-view:hover { background:#e2e8f0; color:#1e293b; }
+.sc-picker-btn-load { background:#4f46e5; border-color:#4f46e5; color:#fff; }
+.sc-picker-btn-load:hover { background:#4338ca; }
+.sc-picker-btn-dup { background:#f0fdf4; border-color:#bbf7d0; color:#15803d; }
+.sc-picker-btn-dup:hover { background:#dcfce7; }
+
+/* Duplicate modal */
+#sc-dup-modal { display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,.45); backdrop-filter:blur(3px); align-items:center; justify-content:center; }
+#sc-dup-modal.open { display:flex; }
+.sc-dup-box { background:#fff; border-radius:12px; width:100%; max-width:420px; box-shadow:0 20px 50px rgba(0,0,0,.2); overflow:hidden; }
+.sc-dup-head { display:flex; align-items:center; justify-content:space-between; padding:.9rem 1.1rem; background:#f8fafc; border-bottom:1px solid #e5e7eb; }
+.sc-dup-head h3 { margin:0; font-size:.95rem; font-weight:700; color:#1f2937; display:flex; align-items:center; gap:.5rem; }
+.sc-dup-close { width:26px; height:26px; border:none; background:#e5e7eb; border-radius:6px; cursor:pointer; font-size:1rem; color:#6b7280; display:flex; align-items:center; justify-content:center; }
+.sc-dup-close:hover { background:#d1d5db; }
+.sc-dup-body { padding:1.1rem; }
+.sc-dup-label { font-size:.75rem; font-weight:600; color:#374151; text-transform:uppercase; letter-spacing:.04em; margin-bottom:.35rem; display:block; }
+.sc-dup-input { width:100%; padding:.5rem .75rem; border:1px solid #d1d5db; border-radius:7px; font-size:.9rem; font-family:monospace; color:#1f2937; outline:none; box-sizing:border-box; transition:border-color .15s,box-shadow .15s; }
+.sc-dup-input:focus { border-color:#4f46e5; box-shadow:0 0 0 3px rgba(79,70,229,.1); }
+.sc-dup-hint { font-size:.72rem; color:#9ca3af; margin-top:.35rem; }
+.sc-dup-foot { display:flex; justify-content:flex-end; gap:.5rem; padding:.8rem 1.1rem; border-top:1px solid #f3f4f6; background:#fafafa; }
+.sc-dup-btn { padding:.42rem .9rem; border-radius:6px; font-size:.82rem; font-weight:600; cursor:pointer; border:1px solid transparent; transition:all .15s; }
+.sc-dup-btn-cancel { background:#f3f4f6; border-color:#e5e7eb; color:#374151; }
+.sc-dup-btn-cancel:hover { background:#e5e7eb; }
+.sc-dup-btn-confirm { background:#4f46e5; color:#fff; }
+.sc-dup-btn-confirm:hover { background:#4338ca; }
+.sc-dup-btn-confirm:disabled { background:#a5b4fc; cursor:not-allowed; }
+</style>
+
+@if(isset($editSalarySheet))
+<form action="{{ route('admin.salary-sheets.update', $editSalarySheet) }}" method="POST" id="salarySheetForm">
+    @csrf
+    @method('PUT')
+@else
+<form action="{{ url('admin/salary-sheet-enforce') }}" method="post" id="salarySheetForm">
+    {{ csrf_field() }}
+@endif
+
+{{-- ── Fixed header bar (info strip + toolbar) ── --}}
+<div id="sc-header-bar">
+<div class="sc-info-strip">
+    <div class="sc-info-item">
+        <span class="sc-info-label">Sheet No.</span>
+        <input type="text" class="sc-info-input" id="sheet_number" name="sheet_number" readonly
+               placeholder="Auto-generated"
+               value="{{ isset($editSalarySheet) ? ($editSalarySheet->sheet_no ?? '') : '' }}">
+    </div>
+    <div class="sc-info-item sc-job-wrapper">
+        <span class="sc-info-label">Job <span style="color:#ef4444;">*</span></span>
+        {{-- Hidden: holds the actual job_id for form submission and JS reads --}}
+        <input type="hidden" id="job_id" name="job_id"
+               value="{{ isset($editSalarySheet) ? $editSalarySheet->job_id : '' }}"
+               data-start-date="{{ isset($editSalarySheet) && $editSalarySheet->job ? $editSalarySheet->job->start_date : '' }}"
+               data-end-date="{{ isset($editSalarySheet) && $editSalarySheet->job ? $editSalarySheet->job->end_date : '' }}">
+        {{-- Visible: AJAX search text field --}}
+        <input type="text" class="sc-info-input" id="job_search_input"
+               autocomplete="off"
+               placeholder="Search job number or name…"
+               value="{{ isset($editSalarySheet) && $editSalarySheet->job ? $editSalarySheet->job->job_number . ' — ' . $editSalarySheet->job->job_name : '' }}"
+               oninput="handleJobSearchInput(this)"
+               onfocus="handleJobSearchFocus(this)"
+               onkeydown="handleJobSearchKeydown(event)">
+        <div id="job-suggestions" class="sc-job-suggestions"></div>
+    </div>
+    <div class="sc-info-item sc-status-wrapper">
+        <span class="sc-info-label">Status</span>
+        <input type="hidden" name="status" id="status_hidden"
+               value="{{ isset($editSalarySheet) ? $editSalarySheet->status : 'draft' }}">
+        <button type="button" class="sc-status-btn" id="status_btn"
+                onclick="toggleStatusDropdown(event)"
+                onkeydown="if(event.key==='Escape')closeStatusDropdown()">
+            <span id="status_label">
+                @php
+                    $statusLabels = ['draft'=>'Draft','complete'=>'Complete','reject'=>'Reject','approve'=>'Approve','paid'=>'Paid'];
+                    $currentStatus = isset($editSalarySheet) ? $editSalarySheet->status : 'draft';
+                    echo $statusLabels[$currentStatus] ?? 'Draft';
+                @endphp
+            </span>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink:0;opacity:.6"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div id="status-dropdown" class="sc-status-dropdown">
+            <div class="sc-status-option {{ $currentStatus==='draft'    ? 'sc-status-active':'' }}" data-value="draft"    onclick="selectStatusOption('draft','Draft')">Draft</div>
+            <div class="sc-status-option {{ $currentStatus==='complete' ? 'sc-status-active':'' }}" data-value="complete" onclick="selectStatusOption('complete','Complete')">Complete</div>
+            <div class="sc-status-option {{ $currentStatus==='reject'   ? 'sc-status-active':'' }}" data-value="reject"   onclick="selectStatusOption('reject','Reject')">Reject</div>
+            <div class="sc-status-option {{ $currentStatus==='approve'  ? 'sc-status-active':'' }}" data-value="approve"  onclick="selectStatusOption('approve','Approve')">Approve</div>
+            <div class="sc-status-option {{ $currentStatus==='paid'     ? 'sc-status-active':'' }}" data-value="paid"     onclick="selectStatusOption('paid','Paid')">Paid</div>
         </div>
     </div>
+    <div class="sc-info-item">
+        <span class="sc-info-label">Location</span>
+        <input type="text" class="sc-info-input" name="location" placeholder="Enter location"
+               value="{{ isset($editSalarySheet) ? ($editSalarySheet->location ?? '') : '' }}">
+    </div>
+</div>
+
+{{-- ── Compact Action Toolbar ── --}}
+<div class="sc-toolbar" id="sc-toolbar">
+    {{-- Row management --}}
+    <button type="button" id="addPromoterBtn" class="sc-btn sc-btn-green" onclick="addPromoterRow()" disabled>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add Row
+    </button>
+    <button type="button" id="bulkAddRowsBtn" class="sc-btn sc-btn-green" onclick="openBulkAddModal()" disabled>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="4" rx="1"/><rect x="3" y="10" width="7" height="4" rx="1"/><rect x="3" y="17" width="7" height="4" rx="1"/><line x1="14" y1="5" x2="22" y2="5"/><line x1="14" y1="12" x2="22" y2="12"/><line x1="14" y1="19" x2="22" y2="19"/></svg>
+        Bulk Add
+    </button>
+
+    <div class="sc-divider"></div>
+
+    {{-- Configuration --}}
+    <button type="button" id="salaryRuleBtn" class="sc-btn sc-btn-indigo" onclick="openSalaryRuleModal()" disabled>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/></svg>
+        Salary Rules
+    </button>
+    <button type="button" id="allowanceRuleBtn" class="sc-btn sc-btn-amber" onclick="openAllowanceRuleModal()" disabled>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        Allowances
+    </button>
+    <button type="button" id="addCustomDateBtn" class="sc-btn sc-btn-sky" onclick="openAddCustomDateModal()" disabled>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="12" y1="14" x2="12" y2="18"/><line x1="10" y1="16" x2="14" y2="16"/></svg>
+        + Date
+    </button>
+    <button type="button" class="sc-btn sc-btn-gray" onclick="openJobSettingsModal()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"/></svg>
+        Settings
+    </button>
+
+    <div class="sc-divider"></div>
+
+    {{-- Utilities --}}
+    <button type="button" class="sc-btn sc-btn-gray" onclick="pullExistingData()" id="pullDataBtn">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
+        Pull Data
+    </button>
+    <button type="button" class="sc-btn sc-btn-gray" onclick="scToggleFullscreen()" id="sc-fs-btn" title="Full Screen (F11)">
+        <svg id="sc-fs-icon-enter" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+        <svg id="sc-fs-icon-exit"  width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none;"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>
+        <span id="sc-fs-label">Full Screen</span>
+    </button>
+
+    <div class="sc-spacer"></div>
+
+    {{-- Save / Update actions --}}
+    @if(isset($editSalarySheet))
+        <button type="button" class="sc-btn sc-btn-solid" onclick="document.getElementById('salarySheetForm').submit()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            Update Sheet
+        </button>
+        <a href="{{ route('admin.salary-sheets.index') }}" class="sc-btn sc-btn-gray" style="text-decoration:none;">Cancel</a>
+    @else
+        <button type="button" class="sc-btn sc-btn-solid" onclick="saveSalarySheet()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            Save Sheet
+        </button>
+    @endif
+</div>
+
+{{-- close #sc-header-bar --}}
+</div>
+{{-- ── Form Body (scrolls under fixed header in fullscreen) ── --}}
+<div id="sc-form-body">
+
+{{-- ── No Job Selected Message ── --}}
+<div id="noJobMessage" class="sc-msg-empty"{{ isset($editSalarySheet) ? ' style="display:none;"' : '' }}>
+    <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5" style="margin:0 auto .6rem;display:block;"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+    <h3>Select a Job to Begin</h3>
+    <p>Choose a job from the dropdown above to start creating the salary sheet.</p>
+</div>
+
+{{-- ── Existing Sheets Picker ── --}}
+<div id="sc-sheets-picker" style="display:none;">
+    <div class="sc-picker-header">
+        <div class="sc-picker-header-left">
+            <div class="sc-picker-header-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            </div>
+            <div>
+                <div class="sc-picker-title">Existing Salary Sheets</div>
+                <p class="sc-picker-sub">This job already has salary sheets. Load one to continue editing, or create a new sheet.</p>
+            </div>
+        </div>
+        <button type="button" class="sc-btn sc-btn-primary" onclick="scStartFresh()" style="white-space:nowrap;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Create New Sheet
+        </button>
+    </div>
+    <div class="sc-picker-list" id="sc-picker-list"></div>
+</div>
+
+{{-- ── No End Date Warning ── --}}
+<div id="noEndDateMessage" class="sc-msg-warn" style="display:none;">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    This job has no end date. You may add custom attendance dates using the <strong>+ Date</strong> button.
+</div>
+
+{{-- ── Salary Sheet Table ── --}}
+<div id="salaryTableContainer" style="{{ isset($editSalarySheet) ? 'display:block;' : 'display:none;' }}">
+    {{-- Scroll Navigation --}}
+    <div class="sc-scroll-nav">
+        <div class="sc-scroll-btns">
+            <button type="button" class="sc-scroll-btn" id="scrollToStartBtn" title="Jump to Start">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="11,17 6,12 11,7"/><polyline points="18,17 13,12 18,7"/></svg>
+            </button>
+            <button type="button" class="sc-scroll-btn" id="scrollLeftBtn" title="Scroll Left">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15,18 9,12 15,6"/></svg>
+            </button>
+            <button type="button" class="sc-scroll-btn" id="scrollRightBtn" title="Scroll Right">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9,18 15,12 9,6"/></svg>
+            </button>
+            <button type="button" class="sc-scroll-btn" id="scrollToEndBtn" title="Jump to End">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="13,17 18,12 13,7"/><polyline points="6,17 11,12 6,7"/></svg>
+            </button>
+        </div>
+        <div class="sc-scroll-info">
+            <span id="scrollPosition">0%</span>
+            <div class="sc-scroll-progress"><div class="sc-scroll-progress-fill" id="scrollProgressBar"></div></div>
+            <span id="scrollInfo">Drag or use buttons</span>
+        </div>
+    </div>
+
+    {{-- Table --}}
+    <div class="table-scroll-container" id="tableScrollContainer">
+        <table class="salary-sheet-table" id="salaryTable">
+            <thead>
+            <tr>
+                <th style="width:48px;">#</th>
+                <th style="width:130px;">Location</th>
+                <th style="width:380px;">Promoter Details</th>
+                <th style="width:340px;">Bank Details</th>
+                <th style="width:700px;">Attendance</th>
+                <th style="width:600px;">Payments</th>
+                <th style="width:400px;">Coordinator</th>
+                <th style="width:64px;">Act.</th>
+            </tr>
+            <tr class="sub-header">
+                <th></th>
+                <th></th>
+                <th>
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;width:700px;">
+                        <div style="text-align:center;font-size:.65rem;">Promoter ID</div>
+                        <div style="text-align:center;font-size:.65rem;">Name</div>
+                        <div style="text-align:center;font-size:.65rem;">Position</div>
+                    </div>
+                </th>
+                <th>
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;width:533px;">
+                        <div style="text-align:center;font-size:.65rem;">Bank Name</div>
+                        <div style="text-align:center;font-size:.65rem;">Branch</div>
+                        <div style="text-align:center;font-size:.65rem;">Account No.</div>
+                    </div>
+                </th>
+                <th id="attendanceColumn" style="display:none;">
+                    <div id="attendanceHeaders" style="display:grid;grid-template-columns:repeat(6,1fr) 1fr 1.5fr;gap:.75rem;width:839px;">
+                        <div style="text-align:center;font-size:.65rem;">Select Job First</div>
+                        <div style="text-align:center;font-size:.65rem;">Select Job First</div>
+                        <div style="text-align:center;font-size:.65rem;">Select Job First</div>
+                        <div style="text-align:center;font-size:.65rem;">Select Job First</div>
+                        <div style="text-align:center;font-size:.65rem;">Select Job First</div>
+                        <div style="text-align:center;font-size:.65rem;">Select Job First</div>
+                        <div style="text-align:center;font-size:.65rem;">Total</div>
+                        <div style="text-align:center;font-size:.65rem;">Amount</div>
+                    </div>
+                </th>
+                <th id="paymentColumn">
+                    <div id="paymentHeaders" style="display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;width:533px;">
+                        <div style="text-align:center;font-size:.65rem;">Amount</div>
+                        <div style="text-align:center;font-size:.65rem;">Expenses</div>
+                        <div style="text-align:center;font-size:.65rem;">Hold 8 wks</div>
+                        <div style="text-align:center;font-size:.65rem;">Net Amount</div>
+                    </div>
+                </th>
+                <th>
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;width:500px;">
+                        <div style="text-align:center;font-size:.65rem;">Coordinator ID</div>
+                        <div style="text-align:center;font-size:.65rem;">Name</div>
+                        <div style="text-align:center;font-size:.65rem;">Fee</div>
+                    </div>
+                </th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody id="promoterRows">
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{{-- ── Attendance Legend ── --}}
+<div id="attendanceLegend" class="sc-legend" style="display:none;">
+    <div class="sc-legend-item">
+        <div class="sc-legend-box" style="background:#d1fae5;border:1px solid #059669;color:#059669;">1</div>
+        <span>Present</span>
+    </div>
+    <div class="sc-legend-item">
+        <div class="sc-legend-box" style="background:#fef3c7;border:1px solid #f59e0b;color:#d97706;">0</div>
+        <span>Absent</span>
+    </div>
+    <span style="color:#94a3b8;font-size:.8rem;">·</span>
+    <span>Only 0 or 1 in attendance cells</span>
+    <span style="color:#94a3b8;font-size:.8rem;">·</span>
+    <span style="color:#059669;font-weight:600;">Attendance Amount = Position Salary × Present Days</span>
+</div>
+
+{{-- ── Salary Summary ── --}}
+<div class="sc-summary">
+    <div class="sc-summary-card sc-summary-blue">
+        <span class="sc-summary-label">Total Earnings</span>
+        <span class="sc-summary-val" id="total-earnings">Rs. 0.00</span>
+    </div>
+    <div class="sc-summary-card sc-summary-red">
+        <span class="sc-summary-label">Total Deductions</span>
+        <span class="sc-summary-val" id="total-deductions">Rs. 0.00</span>
+    </div>
+    <div class="sc-summary-card sc-summary-green">
+        <span class="sc-summary-label">Net Salary</span>
+        <span class="sc-summary-val" id="net-salary">Rs. 0.00</span>
+    </div>
+</div>
+
+{{-- ── Notes ── --}}
+<div class="sc-notes">
+    <label class="sc-notes-label">Notes</label>
+    <textarea class="sc-notes-input" name="notes" rows="2" placeholder="Additional notes or comments...">{{ isset($editSalarySheet) ? ($editSalarySheet->notes ?? '') : '' }}</textarea>
+</div>
+
+</div>{{-- close #sc-form-body --}}
 </form>
+
+{{-- ── Duplicate Sheet Modal ── --}}
+<div id="sc-dup-modal">
+    <div class="sc-dup-box">
+        <div class="sc-dup-head">
+            <h3>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                Duplicate Salary Sheet
+            </h3>
+            <button class="sc-dup-close" onclick="closeDuplicateModal()">×</button>
+        </div>
+        <div class="sc-dup-body">
+            <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:7px;padding:.6rem .85rem;font-size:.78rem;color:#166534;margin-bottom:.85rem;display:flex;align-items:center;gap:.5rem;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                Duplicating: <strong id="sc-dup-source-no" style="font-family:monospace;"></strong>
+            </div>
+            <label class="sc-dup-label">New Sheet Number <span style="color:#ef4444;">*</span></label>
+            <input type="text" id="sc-dup-sheet-no" class="sc-dup-input"
+                   placeholder="e.g. SAL/2026/06/005"
+                   oninput="scDupClearError()">
+            <div id="sc-dup-error" style="display:none;font-size:.72rem;color:#dc2626;margin-top:.35rem;"></div>
+            <p class="sc-dup-hint">All promoter rows and data will be copied. Status will be set to <strong>Draft</strong>.</p>
+        </div>
+        <div class="sc-dup-foot">
+            <button type="button" class="sc-dup-btn sc-dup-btn-cancel" onclick="closeDuplicateModal()">Cancel</button>
+            <button type="button" class="sc-dup-btn sc-dup-btn-confirm" id="sc-dup-confirm-btn" onclick="confirmDuplicate()">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:middle;margin-right:.3rem;"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                Duplicate Sheet
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+function scToggleFullscreen() {
+    const isFS = document.body.classList.toggle('sc-fullscreen');
+    document.getElementById('sc-fs-icon-enter').style.display = isFS ? 'none' : '';
+    document.getElementById('sc-fs-icon-exit').style.display  = isFS ? ''     : 'none';
+    document.getElementById('sc-fs-label').textContent        = isFS ? 'Exit Full Screen' : 'Full Screen';
+    try { sessionStorage.setItem('sc_fullscreen', isFS ? '1' : '0'); } catch(e) {}
+}
+function scApplyFullscreenState() {
+    try {
+        if (sessionStorage.getItem('sc_fullscreen') === '1') {
+            document.body.classList.add('sc-fullscreen');
+            document.getElementById('sc-fs-icon-enter').style.display = 'none';
+            document.getElementById('sc-fs-icon-exit').style.display  = '';
+            document.getElementById('sc-fs-label').textContent        = 'Exit Full Screen';
+        }
+    } catch(e) {}
+}
+scApplyFullscreenState();
+// Allow Esc to exit fullscreen
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && document.body.classList.contains('sc-fullscreen')) {
+        scToggleFullscreen();
+    }
+});
+
+/* ── Duplicate Sheet ── */
+let _scDupSheetId = null;
+
+function openDuplicateModal(sheetId, sheetNo) {
+    _scDupSheetId = sheetId;
+    document.getElementById('sc-dup-source-no').textContent = sheetNo;
+    document.getElementById('sc-dup-sheet-no').value = '';
+    scDupClearError();
+    document.getElementById('sc-dup-modal').classList.add('open');
+    setTimeout(() => document.getElementById('sc-dup-sheet-no').focus(), 80);
+}
+function closeDuplicateModal() {
+    document.getElementById('sc-dup-modal').classList.remove('open');
+    _scDupSheetId = null;
+}
+function scDupClearError() {
+    const err = document.getElementById('sc-dup-error');
+    if (err) err.style.display = 'none';
+}
+function confirmDuplicate() {
+    const sheetNo = document.getElementById('sc-dup-sheet-no').value.trim();
+    const errEl   = document.getElementById('sc-dup-error');
+    const btn     = document.getElementById('sc-dup-confirm-btn');
+    if (!sheetNo) {
+        errEl.textContent = 'Please enter a sheet number.';
+        errEl.style.display = 'block';
+        return;
+    }
+    if (!_scDupSheetId) return;
+    btn.disabled = true;
+    btn.textContent = 'Duplicating…';
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    fetch(`/admin/salary-sheets/${_scDupSheetId}/duplicate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+        body: JSON.stringify({ sheet_no: sheetNo })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            closeDuplicateModal();
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Duplicated!',
+                    text: `Sheet ${data.sheet_no} created successfully.`,
+                    confirmButtonText: 'Open Sheet',
+                    showCancelButton: true,
+                    cancelButtonText: 'Stay Here',
+                }).then(result => {
+                    if (result.isConfirmed) window.location.href = `/admin/salary-sheets/${data.sheet_id}/edit`;
+                });
+            } else {
+                alert(`Sheet ${data.sheet_no} duplicated successfully.`);
+            }
+        } else {
+            errEl.textContent = data.message || 'Duplicate failed.';
+            errEl.style.display = 'block';
+            btn.disabled = false;
+            btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:middle;margin-right:.3rem;"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Duplicate Sheet';
+        }
+    })
+    .catch(() => {
+        errEl.textContent = 'Server error. Please try again.';
+        errEl.style.display = 'block';
+        btn.disabled = false;
+        btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:middle;margin-right:.3rem;"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Duplicate Sheet';
+    });
+}
+// Close duplicate modal on backdrop click
+document.addEventListener('click', function(e) {
+    const modal = document.getElementById('sc-dup-modal');
+    if (e.target === modal) closeDuplicateModal();
+});
+
+// ── Existing Sheets Picker ──
+let _scPickerDates = [];
+
+function scShowPicker(sheets, dates) {
+    _scPickerDates = dates || [];
+    const picker   = document.getElementById('sc-sheets-picker');
+    const list     = document.getElementById('sc-picker-list');
+    const tableEl  = document.getElementById('salaryTableContainer');
+    const noJobMsg = document.getElementById('noJobMessage');
+    if (!picker || !list) return;
+
+    const statusStyles = {
+        draft:    { bg:'#fef3c7', color:'#92400e', border:'#f59e0b', icon:'#fef3c7' },
+        pending:  { bg:'#fef3c7', color:'#92400e', border:'#f59e0b', icon:'#fef3c7' },
+        complete: { bg:'#d1fae5', color:'#065f46', border:'#10b981', icon:'#d1fae5' },
+        approve:  { bg:'#ede9fe', color:'#5b21b6', border:'#8b5cf6', icon:'#ede9fe' },
+        paid:     { bg:'#dbeafe', color:'#1e40af', border:'#3b82f6', icon:'#dbeafe' },
+        reject:   { bg:'#fee2e2', color:'#991b1b', border:'#ef4444', icon:'#fee2e2' },
+    };
+
+    list.innerHTML = sheets.map((sheet, i) => {
+        const ss   = statusStyles[sheet.status] || { bg:'#f3f4f6', color:'#374151', border:'#d1d5db', icon:'#f3f4f6' };
+        const date = sheet.created_at ? new Date(sheet.created_at).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+        const rows = sheet.items_count != null ? sheet.items_count : (sheet.items ? sheet.items.length : 0);
+        const idx  = i + 1;
+        return `
+        <div class="sc-picker-card" style="border-left-color:${ss.border};">
+            <div class="sc-picker-icon" style="background:${ss.icon};">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${ss.color}" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            </div>
+            <div class="sc-picker-meta">
+                <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
+                    <span class="sc-picker-sheet-no">${sheet.sheet_no}</span>
+                    <span class="sc-picker-badge" style="background:${ss.bg};color:${ss.color};">${sheet.status}</span>
+                </div>
+                <div class="sc-picker-info">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    ${date}
+                    <span class="sc-picker-info-sep">·</span>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                    ${rows} promoter${rows !== 1 ? 's' : ''}
+                </div>
+            </div>
+            <div class="sc-picker-actions">
+                <a href="/admin/salary-sheets/${sheet.id}" target="_blank" class="sc-picker-action-btn sc-picker-btn-view" title="View sheet">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    View
+                </a>
+                <button type="button" class="sc-picker-action-btn sc-picker-btn-dup" onclick="openDuplicateModal(${sheet.id}, '${sheet.sheet_no}')" title="Duplicate this sheet">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    Duplicate
+                </button>
+                <button type="button" class="sc-picker-action-btn sc-picker-btn-load" onclick="scLoadSheet(${sheet.id})" title="Load this sheet to edit">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="7 16 12 21 17 16"/><line x1="12" y1="21" x2="12" y2="3"/></svg>
+                    Load
+                </button>
+            </div>
+        </div>`;
+    }).join('');
+
+    if (noJobMsg) noJobMsg.style.display = 'none';
+    if (tableEl)  tableEl.style.display  = 'none';
+    picker.style.display = 'block';
+}
+
+function scHidePicker() {
+    const picker = document.getElementById('sc-sheets-picker');
+    if (picker) picker.style.display = 'none';
+}
+
+function scStartFresh() {
+    scHidePicker();
+    const tableEl = document.getElementById('salaryTableContainer');
+    const legend  = document.getElementById('attendanceLegend');
+    const sheetInput = document.getElementById('sheet_number');
+    if (sheetInput) sheetInput.value = '';
+    selectStatusOption('draft', 'Draft');
+    updateAttendanceHeaders(_scPickerDates);
+    updateExistingRows(_scPickerDates);
+    currentAttendanceDates = _scPickerDates;
+    clearAllRows();
+    addPromoterRow();
+    calculateGrandTotal();
+    if (tableEl) tableEl.style.display = 'block';
+    if (legend)  legend.style.display  = _scPickerDates.length > 0 ? 'block' : 'none';
+    initializeAfterDatesUpdate();
+}
+
+function scLoadSheet(sheetId) {
+    scHidePicker();
+    const tableEl = document.getElementById('salaryTableContainer');
+    const legend  = document.getElementById('attendanceLegend');
+    fetch(`/admin/salary-sheets/${sheetId}/json`)
+        .then(r => r.json())
+        .then(jsonData => {
+            if (jsonData.sheet_number) document.getElementById('sheet_number').value = jsonData.sheet_number;
+            if (jsonData.status) {
+                const labels = {draft:'Draft',complete:'Complete',reject:'Reject',approve:'Approve',paid:'Paid'};
+                selectStatusOption(jsonData.status, labels[jsonData.status] || jsonData.status);
+            }
+            updateAttendanceHeaders(_scPickerDates);
+            updateExistingRows(_scPickerDates);
+            currentAttendanceDates = _scPickerDates;
+            if (jsonData.rows && Object.keys(jsonData.rows).length > 0) {
+                clearAllRows();
+                let idx = 0;
+                for (const [, rowData] of Object.entries(jsonData.rows)) {
+                    if (rowData.promoter_id) { addPromoterRowFromJson(rowData, idx); idx++; }
+                }
+                setTimeout(() => {
+                    document.querySelectorAll('#promoterRows tr').forEach((row, i) => {
+                        const n = i + 1, tot = Array.from(row.querySelectorAll('input[name*="[attendance]["]'))
+                            .reduce((s, inp) => s + (parseFloat(inp.value) || 0), 0);
+                        const ti = row.querySelector(`input[name="rows[${n}][attendance_total]"]`);
+                        if (ti) ti.value = tot;
+                        calculateRowNet(n);
+                    });
+                    calculateGrandTotal();
+                }, 300);
+            } else {
+                clearAllRows(); addPromoterRow(); calculateGrandTotal();
+            }
+            if (tableEl) tableEl.style.display = 'block';
+            if (legend)  legend.style.display  = _scPickerDates.length > 0 ? 'block' : 'none';
+            initializeAfterDatesUpdate();
+            isUpdatingAttendanceDates = false;
+        })
+        .catch(() => {
+            clearAllRows(); addPromoterRow(); calculateGrandTotal();
+            if (tableEl) tableEl.style.display = 'block';
+            initializeAfterDatesUpdate();
+            isUpdatingAttendanceDates = false;
+        });
+}
+
+// ── Job AJAX Search ──────────────────────────────────────────────────────────
+let _jobSearchTimer  = null;
+let _jobActiveIndex  = -1;
+
+function handleJobSearchInput(el) {
+    clearTimeout(_jobSearchTimer);
+    if (!el.value.trim()) {
+        // user cleared the field — clear hidden value and session
+        const hidden = document.getElementById('job_id');
+        if (hidden) { hidden.value = ''; hidden.setAttribute('data-start-date',''); hidden.setAttribute('data-end-date',''); }
+        try { ['sc_job_id','sc_job_number','sc_job_name','sc_job_start','sc_job_end'].forEach(k => sessionStorage.removeItem(k)); } catch(e) {}
+    }
+    _jobSearchTimer = setTimeout(() => searchJobs(el.value.trim()), 220);
+}
+
+function handleJobSearchFocus(el) {
+    searchJobs(el.value.trim());
+}
+
+function handleJobSearchKeydown(e) {
+    const box   = document.getElementById('job-suggestions');
+    const items = box ? box.querySelectorAll('.sc-job-item') : [];
+    if (!items.length) return;
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        _jobActiveIndex = Math.min(_jobActiveIndex + 1, items.length - 1);
+        items.forEach((i, n) => i.classList.toggle('sc-job-active', n === _jobActiveIndex));
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        _jobActiveIndex = Math.max(_jobActiveIndex - 1, 0);
+        items.forEach((i, n) => i.classList.toggle('sc-job-active', n === _jobActiveIndex));
+    } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (_jobActiveIndex >= 0 && items[_jobActiveIndex]) items[_jobActiveIndex].click();
+    } else if (e.key === 'Escape') {
+        closeJobSuggestions();
+    }
+}
+
+function searchJobs(q) {
+    const box = document.getElementById('job-suggestions');
+    if (!box) return;
+    const params = new URLSearchParams({ q, limit: 20 });
+    fetch(`/admin/jobs/ajax/search?${params}`, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(r => r.json())
+    .then(data => {
+        const items = data.data || [];
+        _jobActiveIndex = -1;
+        if (!items.length) {
+            box.innerHTML = '<div class="sc-job-item-empty">No jobs found</div>';
+            box.style.display = 'block';
+            return;
+        }
+        box.innerHTML = items.map(j => `
+            <div class="sc-job-item"
+                 data-id="${j.id}"
+                 data-number="${j.job_number}"
+                 data-name="${(j.job_name||'').replace(/"/g,'&quot;')}"
+                 data-start="${j.start_date || ''}"
+                 data-end="${j.end_date || ''}"
+                 onmousedown="selectJob(this)">
+                <div class="sc-job-item-num">${j.job_number}</div>
+                <div class="sc-job-item-name">${j.job_name || ''}</div>
+                <div class="sc-job-item-meta">${j.client || ''}${j.client && j.start_date ? ' · ' : ''}${j.start_date || ''} → ${j.end_date || 'No end date'}</div>
+            </div>
+        `).join('');
+        box.style.display = 'block';
+    })
+    .catch(() => { box.style.display = 'none'; });
+}
+
+function selectJob(el) {
+    const hidden  = document.getElementById('job_id');
+    const textEl  = document.getElementById('job_search_input');
+    hidden.value  = el.dataset.id;
+    hidden.setAttribute('data-start-date', el.dataset.start || '');
+    hidden.setAttribute('data-end-date',   el.dataset.end   || '');
+    textEl.value  = el.dataset.number + ' — ' + el.dataset.name;
+    try {
+        sessionStorage.setItem('sc_job_id',     el.dataset.id);
+        sessionStorage.setItem('sc_job_number', el.dataset.number);
+        sessionStorage.setItem('sc_job_name',   el.dataset.name);
+        sessionStorage.setItem('sc_job_start',  el.dataset.start || '');
+        sessionStorage.setItem('sc_job_end',    el.dataset.end   || '');
+    } catch(e) {}
+    closeJobSuggestions();
+    updateAttendanceDates();
+}
+
+function scRestoreJob() {
+    const hidden = document.getElementById('job_id');
+    const textEl = document.getElementById('job_search_input');
+    if (!hidden || hidden.value) return false; // edit mode already has a value
+    try {
+        const id = sessionStorage.getItem('sc_job_id');
+        if (!id) return false;
+        hidden.value = id;
+        hidden.setAttribute('data-start-date', sessionStorage.getItem('sc_job_start') || '');
+        hidden.setAttribute('data-end-date',   sessionStorage.getItem('sc_job_end')   || '');
+        const num  = sessionStorage.getItem('sc_job_number') || '';
+        const name = sessionStorage.getItem('sc_job_name')   || '';
+        if (textEl) textEl.value = (num && name) ? num + ' — ' + name : num || name;
+        return true; // fields restored — caller should trigger updateAttendanceDates()
+    } catch(e) { return false; }
+}
+// scRestoreJob() is called from DOMContentLoaded below to avoid TDZ on let variables
+
+function closeJobSuggestions() {
+    const box = document.getElementById('job-suggestions');
+    if (box) box.style.display = 'none';
+    _jobActiveIndex = -1;
+}
+
+/* ── Status custom dropdown ── */
+function toggleStatusDropdown(e) {
+    e.stopPropagation();
+    const dd = document.getElementById('status-dropdown');
+    if (!dd) return;
+    dd.style.display = dd.style.display === 'block' ? 'none' : 'block';
+}
+function selectStatusOption(value, label) {
+    const hidden = document.getElementById('status_hidden');
+    const lbl    = document.getElementById('status_label');
+    const dd     = document.getElementById('status-dropdown');
+    if (hidden) hidden.value = value;
+    if (lbl)    lbl.textContent = label;
+    if (dd)     dd.style.display = 'none';
+    document.querySelectorAll('.sc-status-option').forEach(function(o) {
+        o.classList.toggle('sc-status-active', o.dataset.value === value);
+    });
+}
+function closeStatusDropdown() {
+    const dd = document.getElementById('status-dropdown');
+    if (dd) dd.style.display = 'none';
+}
+
+// Close both dropdowns when clicking outside
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.sc-job-wrapper'))    closeJobSuggestions();
+    if (!e.target.closest('.sc-status-wrapper')) closeStatusDropdown();
+});
+</script>
 
 <!-- Position Wise Salary Rule Modal -->
 <div id="salaryRuleModal" class="modal" style="display: none;">
@@ -398,10 +1383,10 @@
             <h3>Allowance Rules</h3>
             <span class="close" id="allowanceRuleCloseBtn">&times;</span>
         </div>
-        <div class="modal-body">
-            <div style="margin-bottom: 1rem;">
-                <button type="button" id="addAllowanceRowBtn" class="btn btn-success">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+        <div class="modal-body" style="padding: 1rem;">
+            <div style="margin-bottom: 0.75rem;">
+                <button type="button" id="addAllowanceRowBtn" class="btn btn-success" style="padding: 0.375rem 0.75rem; font-size: 0.8125rem;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
                         <line x1="12" y1="5" x2="12" y2="19"></line>
                         <line x1="5" y1="12" x2="19" y2="12"></line>
                     </svg>
@@ -413,9 +1398,9 @@
                 <!-- Dynamic allowance rows will be added here -->
             </div>
 
-            <div style="margin-top: 2rem; display: flex; justify-content: flex-end; gap: 1rem;">
-                <button type="button" class="btn btn-secondary" onclick="closeAllowanceRuleModal()">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="saveAllowanceRules()">Save Allowance Rules</button>
+            <div style="margin-top: 1rem; display: flex; justify-content: flex-end; gap: 0.5rem;">
+                <button type="button" class="btn btn-secondary" onclick="closeAllowanceRuleModal()" style="padding: 0.375rem 0.75rem; font-size: 0.8125rem;">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveAllowanceRules()" style="padding: 0.375rem 0.75rem; font-size: 0.8125rem;">Save Allowance Rules</button>
             </div>
         </div>
     </div>
@@ -525,6 +1510,39 @@
     </div>
 </div>
 
+<!-- Bulk Add Rows Modal -->
+<div id="bulkAddRowsModal" style="display:none; position:fixed; z-index:1050; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.5); backdrop-filter:blur(4px);">
+    <div style="background:#fff; margin:10% auto; width:90%; max-width:400px; border-radius:0.5rem; box-shadow:0 20px 25px -5px rgba(0,0,0,0.15); animation:modalSlideIn 0.25s ease-out; overflow:hidden;">
+        <!-- Header -->
+        <div style="padding:1.25rem 1.5rem; border-bottom:1px solid #e5e7eb; background:#f8fafc; display:flex; justify-content:space-between; align-items:center;">
+            <h3 style="margin:0; font-size:1.1rem; font-weight:600; color:#1f2937;">Bulk Add Promoter Rows</h3>
+            <span onclick="closeBulkAddModal()" style="font-size:1.5rem; line-height:1; color:#6b7280; cursor:pointer; padding:0 0.25rem;" title="Close">&times;</span>
+        </div>
+        <!-- Body -->
+        <div style="padding:1.5rem;">
+            <label for="bulkRowCount" style="display:block; font-weight:600; margin-bottom:0.5rem; color:#374151; font-size:0.9rem;">Number of rows to add</label>
+            <input type="number" id="bulkRowCount" min="1" max="100" value="5"
+                style="width:100%; padding:0.625rem 0.75rem; border:1px solid #d1d5db; border-radius:0.375rem; font-size:1rem; color:#1f2937; background:#fff; outline:none; box-sizing:border-box;"
+                placeholder="Enter count..."
+                onfocus="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 0 3px rgba(59,130,246,0.15)';"
+                onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='none';">
+            <p style="margin:0.4rem 0 0; font-size:0.78rem; color:#6b7280;">Enter a number between 1 and 100.</p>
+            <div id="bulkAddError" style="display:none; margin-top:0.5rem; color:#dc2626; font-size:0.82rem; font-weight:500;"></div>
+        </div>
+        <!-- Footer -->
+        <div style="padding:1rem 1.5rem; border-top:1px solid #e5e7eb; background:#f8fafc; display:flex; justify-content:flex-end; gap:0.5rem;">
+            <button type="button" onclick="closeBulkAddModal()"
+                style="padding:0.5rem 1.25rem; border:1px solid #d1d5db; border-radius:0.375rem; background:#fff; color:#374151; font-size:0.875rem; font-weight:500; cursor:pointer; transition:background 0.15s;">
+                Cancel
+            </button>
+            <button type="button" onclick="confirmBulkAdd()"
+                style="padding:0.5rem 1.25rem; border:none; border-radius:0.375rem; background:#10b981; color:#fff; font-size:0.875rem; font-weight:600; cursor:pointer; transition:background 0.15s;">
+                Add Rows
+            </button>
+        </div>
+    </div>
+</div>
+
 <!-- Add Custom Date Modal -->
 <div id="addCustomDateModal" class="modal" style="display: none;">
     <div class="modal-content" style="max-width: 500px;">
@@ -545,1221 +1563,6 @@
         </div>
     </div>
 </div>
-
-<style>
-/* Professional Header Styles */
-.header-title h3 {
-    margin: 0 0 0.5rem 0;
-    color: #1f2937;
-    font-size: 1.5rem;
-    font-weight: 700;
-    line-height: 1.2;
-}
-
-.header-subtitle {
-    margin: 0;
-    color: #6b7280;
-    font-size: 0.875rem;
-    font-weight: 400;
-    line-height: 1.4;
-}
-
-/* Professional Toolbar Section */
-.toolbar-section {
-    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-    border-bottom: 1px solid #e2e8f0;
-    padding: 1.5rem 0;
-    margin: 0;
-}
-
-.toolbar-container {
-    display: flex;
-    align-items: center;
-    gap: 2rem;
-    flex-wrap: wrap;
-    max-width: 100%;
-    padding-left: 1.5rem;
-}
-
-.toolbar-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    min-width: 0;
-}
-
-.toolbar-label {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: #64748b;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 0.25rem;
-}
-
-.toolbar-buttons {
-    display: flex;
-    gap: 0.75rem;
-    align-items: center;
-    flex-wrap: wrap;
-}
-
-.toolbar-divider {
-    width: 1px;
-    height: 3rem;
-    background: linear-gradient(to bottom, transparent, #cbd5e1, transparent);
-    flex-shrink: 0;
-}
-
-/* Professional Toolbar Button Styles */
-.toolbar-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1.25rem;
-    border: none;
-    border-radius: 0.5rem;
-    font-size: 0.875rem;
-    font-weight: 600;
-    text-decoration: none;
-    cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-    overflow: hidden;
-    min-height: 2.75rem;
-    box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-    border: 1px solid transparent;
-}
-
-.toolbar-btn:before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-    transition: left 0.5s;
-}
-
-.toolbar-btn:hover:before {
-    left: 100%;
-}
-
-.toolbar-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.15), 0 2px 4px 0 rgba(0, 0, 0, 0.1);
-}
-
-.toolbar-btn:active {
-    transform: translateY(0);
-    box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-}
-
-.toolbar-btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-}
-
-.toolbar-btn:disabled:hover {
-    transform: none;
-    box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-}
-
-.toolbar-btn svg {
-    flex-shrink: 0;
-    transition: transform 0.2s ease;
-}
-
-.toolbar-btn:hover svg {
-    transform: scale(1.1);
-}
-
-.toolbar-btn span {
-    white-space: nowrap;
-    font-weight: 600;
-}
-
-.btn-modern:before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-    transition: left 0.5s;
-}
-
-.btn-modern:hover:before {
-    left: 100%;
-}
-
-.btn-modern:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.15), 0 2px 4px 0 rgba(0, 0, 0, 0.1);
-}
-
-.btn-modern:active {
-    transform: translateY(0);
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-}
-
-.btn-modern:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-}
-
-.btn-modern:disabled:hover {
-    transform: none;
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-}
-
-.btn-modern svg {
-    flex-shrink: 0;
-    transition: transform 0.2s ease;
-}
-
-.btn-modern:hover svg {
-    transform: scale(1.1);
-}
-
-.btn-modern span {
-    white-space: nowrap;
-    font-weight: 600;
-}
-
-/* Toolbar Button Color Variants */
-.toolbar-btn-primary {
-    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-    color: white;
-    border-color: #2563eb;
-}
-
-.toolbar-btn-primary:hover {
-    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-    border-color: #1d4ed8;
-}
-
-.toolbar-btn-success {
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-    color: white;
-    border-color: #059669;
-}
-
-.toolbar-btn-success:hover {
-    background: linear-gradient(135deg, #059669 0%, #047857 100%);
-    border-color: #047857;
-}
-
-.toolbar-btn-info {
-    background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
-    color: white;
-    border-color: #0891b2;
-}
-
-.toolbar-btn-info:hover {
-    background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%);
-    border-color: #0e7490;
-}
-
-.toolbar-btn-warning {
-    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-    color: white;
-    border-color: #d97706;
-}
-
-.toolbar-btn-warning:hover {
-    background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
-    border-color: #b45309;
-}
-
-.toolbar-btn-secondary {
-    background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
-    color: white;
-    border-color: #4b5563;
-}
-
-.toolbar-btn-secondary:hover {
-    background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
-    border-color: #374151;
-}
-
-.toolbar-btn-outline {
-    background: white;
-    color: #64748b;
-    border: 1px solid #cbd5e1;
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-}
-
-.toolbar-btn-outline:hover {
-    background: #f8fafc;
-    color: #475569;
-    border-color: #94a3b8;
-    box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-}
-
-/* Responsive Design for Toolbar */
-@media (max-width: 1200px) {
-    .toolbar-container {
-        gap: 1.5rem;
-    }
-
-    .toolbar-divider {
-        display: none;
-    }
-}
-
-@media (max-width: 768px) {
-    .header-title h3 {
-        font-size: 1.25rem;
-    }
-
-    .header-subtitle {
-        font-size: 0.8rem;
-    }
-
-    .toolbar-section {
-        padding: 1rem 0;
-    }
-
-    .toolbar-container {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 1rem;
-        padding-left: 1rem;
-    }
-
-    .toolbar-group {
-        align-items: stretch;
-    }
-
-    .toolbar-buttons {
-        justify-content: center;
-        flex-wrap: wrap;
-    }
-
-    .toolbar-btn {
-        padding: 0.625rem 1rem;
-        font-size: 0.8rem;
-        min-height: 2.5rem;
-    }
-}
-
-@media (max-width: 480px) {
-    .toolbar-container {
-        padding-left: 0.75rem;
-    }
-
-    .toolbar-buttons {
-        flex-direction: column;
-        width: 100%;
-    }
-
-    .toolbar-btn {
-        width: 100%;
-        justify-content: center;
-    }
-
-    .toolbar-label {
-        text-align: center;
-    }
-}
-
-/* Focus States for Accessibility */
-.toolbar-btn:focus {
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
-}
-
-.toolbar-btn-outline:focus {
-    box-shadow: 0 0 0 3px rgba(100, 116, 139, 0.3);
-}
-
-/* Loading State */
-.btn-modern.loading {
-    position: relative;
-    color: transparent;
-}
-
-.btn-modern.loading:after {
-    content: '';
-    position: absolute;
-    width: 16px;
-    height: 16px;
-    top: 50%;
-    left: 50%;
-    margin-left: -8px;
-    margin-top: -8px;
-    border: 2px solid transparent;
-    border-top-color: currentColor;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-.salary-sheet-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.875rem;
-    background: white;
-    border: 1px solid #e5e7eb;
-}
-
-.salary-sheet-table th {
-    background-color: #374151;
-    color: white;
-    padding: 1rem 1.5rem;
-    text-align: center;
-    font-weight: 600;
-    border: 1px solid #4b5563;
-}
-
-.salary-sheet-table .sub-header th {
-    background-color: #6b7280;
-    padding: 0.75rem 1rem;
-    font-size: 0.75rem;
-}
-
-.salary-sheet-table td {
-    padding: 1rem 1.5rem;
-    border: 1px solid #e5e7eb;
-    vertical-align: middle;
-    background: white;
-}
-
-.salary-sheet-table tbody tr:nth-child(even) td {
-    background-color: #f8fafc;
-}
-
-.salary-sheet-table tbody tr:nth-child(even) td.calculated-cell {
-    background-color: #dbeafe;
-}
-
-/* Horizontal Scroll Container */
-.table-scroll-container {
-    overflow-x: auto;
-    overflow-y: auto;
-    position: relative;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    background: white;
-    margin-top: 1rem;
-    max-height: 70vh;
-}
-
-/* Sticky Headers */
-.salary-sheet-table thead {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-}
-
-.salary-sheet-table thead th {
-    position: sticky;
-    top: 0;
-    background-color: #374151;
-    color: white;
-    font-weight: 600;
-    border-bottom: 2px solid #4b5563;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-/* Ensure sub-headers are also sticky */
-.salary-sheet-table .sub-header th {
-    position: sticky;
-    top: 48px; /* Height of main header */
-    background-color: #6b7280;
-    z-index: 9;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    border-bottom: 1px solid #4b5563;
-}
-
-/* Ensure sub-header content is properly styled */
-.salary-sheet-table .sub-header th div {
-    color: white;
-    font-weight: 500;
-}
-
-/* Add smooth scrolling behavior */
-.table-scroll-container {
-    scroll-behavior: smooth;
-}
-
-/* Ensure proper spacing for sticky headers */
-.salary-sheet-table tbody tr:first-child td {
-    border-top: none;
-}
-
-/* Enhanced scrollbar for vertical scrolling */
-.table-scroll-container::-webkit-scrollbar {
-    height: 8px;
-    width: 8px;
-}
-
-.table-scroll-container::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 4px;
-}
-
-.table-scroll-container::-webkit-scrollbar-thumb {
-    background: #c1c1c1;
-    border-radius: 4px;
-}
-
-.table-scroll-container::-webkit-scrollbar-thumb:hover {
-    background: #a8a8a8;
-}
-
-/* Corner scrollbar styling */
-.table-scroll-container::-webkit-scrollbar-corner {
-    background: #f1f1f1;
-}
-
-/* Scroll Navigation Panel */
-.scroll-navigation {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.5rem 1rem;
-    background: #f8f9fa;
-    border-bottom: 1px solid #e5e7eb;
-    border-radius: 8px 8px 0 0;
-}
-
-.scroll-controls {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-}
-
-.scroll-btn {
-    background: #3b82f6;
-    color: white;
-    border: none;
-    padding: 0.5rem;
-    border-radius: 4px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
-    min-width: 36px;
-    height: 36px;
-}
-
-.scroll-btn:hover {
-    background: #2563eb;
-    transform: translateY(-1px);
-}
-
-.scroll-btn:disabled {
-    background: #9ca3af;
-    cursor: not-allowed;
-    transform: none;
-}
-
-.scroll-indicator {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.875rem;
-    color: #6b7280;
-}
-
-.scroll-progress {
-    width: 200px;
-    height: 4px;
-    background: #e5e7eb;
-    border-radius: 2px;
-    position: relative;
-    overflow: hidden;
-}
-
-.scroll-progress-bar {
-    height: 100%;
-    background: #3b82f6;
-    border-radius: 2px;
-    transition: width 0.3s ease;
-    width: 0%;
-}
-
-/* Draggable Scroll */
-.table-scroll-container.dragging {
-    cursor: grabbing;
-    user-select: none;
-}
-
-.table-scroll-container.dragging * {
-    pointer-events: none;
-}
-
-/* Ensure form controls are always interactive */
-.table-scroll-container input,
-.table-scroll-container select,
-.table-scroll-container textarea,
-.table-scroll-container button {
-    pointer-events: auto !important;
-    cursor: default !important;
-}
-
-.table-scroll-container.dragging input,
-.table-scroll-container.dragging select,
-.table-scroll-container.dragging textarea,
-.table-scroll-container.dragging button {
-    pointer-events: auto !important;
-    cursor: default !important;
-}
-
-/* Touch/Swipe Support */
-.table-scroll-container {
-    touch-action: pan-x;
-    -webkit-overflow-scrolling: touch;
-}
-
-/* Responsive Scroll Indicators */
-@media (max-width: 768px) {
-    .scroll-navigation {
-        padding: 0.25rem 0.5rem;
-    }
-
-    .scroll-progress {
-        width: 120px;
-    }
-
-    .scroll-btn {
-        min-width: 32px;
-        height: 32px;
-        padding: 0.25rem;
-    }
-}
-
-/* Smooth scroll animations */
-@keyframes scrollSmooth {
-    from { transform: translateX(0); }
-    to { transform: translateX(-100px); }
-}
-
-.table-scroll-container {
-    scroll-behavior: smooth;
-}
-
-/* Enhanced drag cursor */
-.table-scroll-container.dragging {
-    cursor: grabbing !important;
-}
-
-.table-scroll-container:not(.dragging) {
-    cursor: grab;
-}
-
-/* Scroll hint animation */
-.scroll-hint {
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-}
-
-.table-input {
-    width: 100%;
-    padding: 0.75rem;
-    border: 1px solid #d1d5db;
-    border-radius: 0.375rem;
-    font-size: 0.875rem;
-    background: white;
-    text-align: center;
-}
-
-.table-input:focus {
-    outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.table-input-small {
-    width: 100%;
-    padding: 0.5rem;
-    border: 1px solid #d1d5db;
-    border-radius: 0.375rem;
-    font-size: 0.8rem;
-    background: white;
-    text-align: center;
-}
-
-.table-input-small:focus {
-    outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
-}
-
-.table-input-readonly {
-    background-color: #f9fafb !important;
-    font-weight: bold;
-}
-
-.form-control {
-    width: 100%;
-    padding: 0.5rem;
-    border: 1px solid #d1d5db;
-    border-radius: 0.375rem;
-    font-size: 0.875rem;
-    background: white;
-}
-
-.form-control:focus {
-    outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
-}
-
-.btn-success {
-    background-color: #10b981;
-    color: white;
-    padding: 0.75rem 1.5rem;
-    border: none;
-    border-radius: 0.375rem;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    font-weight: 500;
-    transition: all 0.2s;
-}
-
-.btn-success:hover {
-    background-color: #059669;
-    transform: translateY(-1px);
-}
-
-.btn-primary {
-    background-color: #3b82f6;
-    color: white;
-    padding: 0.75rem 1.5rem;
-    border: none;
-    border-radius: 0.375rem;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    font-weight: 500;
-    transition: all 0.2s;
-}
-
-.btn-primary:hover {
-    background-color: #2563eb;
-    transform: translateY(-1px);
-}
-
-.btn-secondary {
-    background-color: #6b7280;
-    color: white;
-    padding: 0.75rem 1.5rem;
-    border: none;
-    border-radius: 0.375rem;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    font-weight: 500;
-    transition: all 0.2s;
-}
-
-.btn-secondary:hover {
-    background-color: #4b5563;
-    transform: translateY(-1px);
-}
-
-.btn-danger {
-    background-color: #ef4444;
-    color: white;
-    padding: 0.25rem 0.5rem;
-    border: none;
-    border-radius: 0.25rem;
-    font-size: 0.75rem;
-    cursor: pointer;
-}
-
-.btn-danger:hover {
-    background-color: #dc2626;
-}
-
-@media (max-width: 768px) {
-    .salary-sheet-table {
-        font-size: 0.75rem;
-    }
-
-    .salary-sheet-table th,
-    .salary-sheet-table td {
-        padding: 0.25rem;
-    }
-
-    div[style*="grid-template-columns"] {
-        grid-template-columns: 1fr !important;
-    }
-}
-
-/* Modal Styles */
-.modal {
-    position: fixed;
-    z-index: 1000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(4px);
-}
-
-.modal-content {
-    background-color: white;
-    margin: 5% auto;
-    padding: 0;
-    border-radius: 0.5rem;
-    width: 80%;
-    max-width: 800px;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-    animation: modalSlideIn 0.3s ease-out;
-}
-
-@keyframes modalSlideIn {
-    from {
-        opacity: 0;
-        transform: translateY(-50px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.modal-header {
-    padding: 1.5rem;
-    border-bottom: 1px solid #e5e7eb;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background-color: #f8fafc;
-    border-radius: 0.5rem 0.5rem 0 0;
-}
-
-.modal-header h3 {
-    margin: 0;
-    color: #374151;
-    font-size: 1.25rem;
-    font-weight: 600;
-}
-
-.close {
-    color: #6b7280;
-    font-size: 2rem;
-    font-weight: bold;
-    cursor: pointer;
-    line-height: 1;
-}
-
-.close:hover {
-    color: #374151;
-}
-
-.modal-body {
-    padding: 1.5rem;
-    max-height: 70vh;
-    overflow-y: auto;
-}
-
-.salary-rule-row {
-    display: grid;
-    grid-template-columns: 2fr 2fr 1fr 1fr auto;
-    gap: 1rem;
-    align-items: center;
-    padding: 1rem;
-    margin-bottom: 1rem;
-    background-color: #f8fafc;
-    border: 1px solid #e5e7eb;
-    border-radius: 0.5rem;
-}
-
-.salary-rule-row select,
-.salary-rule-row input {
-    padding: 0.75rem;
-    border: 1px solid #d1d5db;
-    border-radius: 0.375rem;
-    font-size: 0.875rem;
-    background: white;
-}
-
-.salary-rule-row select:focus,
-.salary-rule-row input:focus {
-    outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.remove-rule-btn {
-    background-color: #dc2626;
-    color: white;
-    border: none;
-    border-radius: 0.375rem;
-    padding: 0.75rem;
-    cursor: pointer;
-    font-size: 1rem;
-    font-weight: bold;
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.remove-rule-btn:hover {
-    background-color: #b91c1c;
-}
-
-.existing-rule-row {
-    display: grid;
-    grid-template-columns: 2fr 1fr 1fr auto;
-    gap: 1rem;
-    align-items: center;
-    padding: 1rem;
-    margin-bottom: 1rem;
-    background-color: #f0f9ff;
-    border: 1px solid #0ea5e9;
-    border-radius: 0.5rem;
-}
-
-.existing-rule-row .rule-info {
-    padding: 0.75rem;
-    background: #f8fafc;
-    border: 1px solid #d1d5db;
-    border-radius: 0.375rem;
-    font-size: 0.875rem;
-    color: #374151;
-}
-
-.delete-rule-btn {
-    background-color: #dc2626;
-    color: white;
-    border: none;
-    border-radius: 0.375rem;
-    padding: 0.75rem;
-    cursor: pointer;
-    font-size: 1rem;
-    font-weight: bold;
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.delete-rule-btn:hover {
-    background-color: #b91c1c;
-}
-
-.btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    background-color: #9ca3af !important;
-    border-color: #9ca3af !important;
-}
-
-.btn:disabled:hover {
-    background-color: #9ca3af !important;
-    border-color: #9ca3af !important;
-}
-
-@keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
-
-/* Modal Preloader Styles */
-.modal-preloader {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(255, 255, 255, 0.95);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    border-radius: 0.5rem;
-}
-
-.preloader-content {
-    text-align: center;
-    padding: 2rem;
-}
-
-.preloader-spinner {
-    width: 40px;
-    height: 40px;
-    border: 4px solid #e5e7eb;
-    border-top: 4px solid #3b82f6;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin: 0 auto 1rem auto;
-}
-
-.preloader-text {
-    color: #6b7280;
-    font-size: 0.875rem;
-    margin: 0;
-    font-weight: 500;
-}
-
-.btn-sm {
-    padding: 0.375rem 0.75rem;
-    font-size: 0.75rem;
-    border-radius: 0.25rem;
-}
-
-.btn-outline {
-    background-color: transparent;
-    border: 1px solid #d1d5db;
-    color: #6b7280;
-}
-
-.btn-outline:hover {
-    background-color: #f9fafb;
-    border-color: #9ca3af;
-    color: #374151;
-}
-
-.btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    background-color: #e5e7eb !important;
-    border-color: #d1d5db !important;
-    color: #9ca3af !important;
-}
-
-.btn:disabled:hover {
-    background-color: #e5e7eb !important;
-    border-color: #d1d5db !important;
-    color: #9ca3af !important;
-}
-
-/* Attendance input styling */
-.table-input-small[placeholder="0/1"] {
-    text-align: center;
-    font-weight: bold;
-    background-color: #fef3c7;
-    border-color: #f59e0b;
-}
-
-.table-input-small[placeholder="0/1"]:focus {
-    background-color: #fef3c7;
-    border-color: #d97706;
-    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
-}
-
-/* Attendance amount field styling for better number display */
-.table-input-small[name*="[attendance_amount]"] {
-    text-align: right;
-    font-weight: 500;
-    font-family: 'Courier New', monospace;
-    letter-spacing: 0.5px;
-}
-
-/* Payment amount field styling for auto-calculated values */
-.table-input-small[name*="[amount]"][readonly] {
-    text-align: right;
-    font-weight: 500;
-    font-family: 'Courier New', monospace;
-    letter-spacing: 0.5px;
-    background-color: #f0f9ff;
-    border-color: #3b82f6;
-}
-
-/* Job Settings Modal Styles */
-.tab-navigation {
-    display: flex;
-    border-bottom: 2px solid #e5e7eb;
-    margin-bottom: 1.5rem;
-}
-
-.tab-btn {
-    background: none;
-    border: none;
-    padding: 0.75rem 1.5rem;
-    cursor: pointer;
-    border-bottom: 3px solid transparent;
-    color: #6b7280;
-    font-weight: 500;
-    display: flex;
-    align-items: center;
-    transition: all 0.2s ease;
-}
-
-.tab-btn:hover {
-    color: #374151;
-    background-color: #f9fafb;
-}
-
-.tab-btn.active {
-    color: #3b82f6;
-    border-bottom-color: #3b82f6;
-    background-color: #f0f9ff;
-}
-
-.tab-content {
-    display: none;
-    animation: fadeIn 0.3s ease-in-out;
-}
-
-.tab-content.active {
-    display: block;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-.form-text {
-    font-size: 0.75rem;
-    color: #6b7280;
-    margin-top: 0.25rem;
-}
-
-.form-label {
-    font-weight: 600;
-    color: #374151;
-    margin-bottom: 0.5rem;
-    display: block;
-}
-
-/* Professional Tooltip Styles */
-.promoter-tooltip {
-    position: relative;
-    cursor: help;
-}
-
-.tooltip-container {
-    position: absolute;
-    bottom: calc(100% + 12px);
-    left: 50%;
-    transform: translateX(-50%);
-    background: #1f2937;
-    color: white;
-    padding: 12px 16px;
-    border-radius: 8px;
-    font-size: 0.875rem;
-    line-height: 1.4;
-    opacity: 0;
-    visibility: hidden;
-    transition: all 0.3s ease;
-    z-index: 1000;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    min-width: 280px;
-    max-width: 400px;
-    white-space: normal;
-}
-
-.tooltip-container::after {
-    content: '';
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 0;
-    height: 0;
-    border: 6px solid transparent;
-    border-top-color: #1f2937;
-}
-
-.tooltip-container.show {
-    opacity: 1;
-    visibility: visible;
-}
-
-/* Tooltip content styling */
-.tooltip-content {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.tooltip-header {
-    font-weight: 600;
-    font-size: 0.9rem;
-    color: #f9fafb;
-    border-bottom: 1px solid #374151;
-    padding-bottom: 6px;
-    margin-bottom: 6px;
-}
-
-.tooltip-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
-}
-
-.tooltip-label {
-    color: #d1d5db;
-    font-size: 0.8rem;
-    font-weight: 500;
-    min-width: 80px;
-}
-
-.tooltip-value {
-    color: #ffffff;
-    font-size: 0.8rem;
-    font-weight: 400;
-    text-align: right;
-    flex: 1;
-}
-
-.tooltip-status {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 0.75rem;
-    font-weight: 500;
-    text-transform: uppercase;
-}
-
-.tooltip-status.active {
-    background-color: #10b981;
-    color: white;
-}
-
-.tooltip-status.inactive {
-    background-color: #6b7280;
-    color: white;
-}
-
-.tooltip-status.suspended {
-    background-color: #f59e0b;
-    color: white;
-}
-
-/* Responsive tooltip positioning */
-@media (max-width: 768px) {
-    .tooltip-container {
-        left: 0;
-        transform: none;
-        min-width: 250px;
-    }
-
-    .tooltip-container::after {
-        left: 20px;
-        transform: none;
-    }
-}
-</style>
 
 <!-- JSON Import Modal -->
 <div id="jsonImportModal" class="modal" style="display: none;">
@@ -1799,7 +1602,9 @@
 const promoters = @json($promoters);
 const coordinators = @json($coordinators);
 const jobs = @json($jobs);
-const allowances = @json($allowances);
+const allowances = @json($allowances ?? []);
+const isEditMode = @json(isset($editSalarySheet));
+const jobSalarySheetsData = @json($jobSalarySheets ?? []);
 let rowCounter = 1;
 let allowanceRuleCounter = 0;
 
@@ -1857,10 +1662,17 @@ function generatePaymentRowHTML(rowNumber, jobAllowances = [], defaultValues = {
     // Add allowance input fields
     jobAllowances.forEach((allowance, index) => {
         const defaultValue = defaultValues[allowance.allowance_name] || allowance.price || 0;
+        const multiplyByAttendance = allowance.multiply_by_attendance === true || allowance.multiply_by_attendance === 1 || allowance.multiply_by_attendance === '1';
+        const hasDefaultValue = defaultValues[allowance.allowance_name] !== undefined && defaultValues[allowance.allowance_name] !== null;
         rowHTML += `
             <input type="number" step="0.01" class="table-input-small" name="rows[${rowNumber}][allowances][${allowance.allowance_name}]"
-                   value="${defaultValue}" placeholder="0.00" onchange="calculateRowNet(${rowNumber})"
-                   title="${allowance.allowance_name}">
+                   value="${defaultValue}" placeholder="0.00"
+                   onchange="markAllowanceAsCustom(this, '${allowance.allowance_name}'); calculateRowNet(${rowNumber})"
+                   data-allowance-name="${allowance.allowance_name}"
+                   data-multiply-by-attendance="${multiplyByAttendance ? 'true' : 'false'}"
+                   data-allowance-price="${allowance.price || 0}"
+                   ${hasDefaultValue ? 'data-loaded-from-db="true"' : ''}
+                   title="${allowance.allowance_name}${multiplyByAttendance ? ' (Auto: Attendance × Price)' : ''}">
         `;
     });
 
@@ -1959,31 +1771,54 @@ function addAllowanceRow() {
     row.style.cssText = `
         display: flex;
         align-items: center;
-        gap: 1rem;
-        padding: 1rem;
+        gap: 0.5rem;
+        padding: 0.5rem;
         border: 1px solid #e5e7eb;
-        border-radius: 0.5rem;
-        margin-bottom: 1rem;
+        border-radius: 0.375rem;
+        margin-bottom: 0.5rem;
         background: #f9fafb;
     `;
 
     row.innerHTML = `
         <div style="flex: 1;">
-            <label style="display: block; margin-bottom: 0.5rem; font-size: 0.875rem; font-weight: 600; color: #374151;">Allowance Name</label>
-            <select class="form-control" name="allowance_rules[${allowanceRuleCounter}][allowance_name]" required>
+            <label style="display: block; margin-bottom: 0.25rem; font-size: 0.75rem; font-weight: 600; color: #374151;">Allowance Type</label>
+            <select class="form-control" id="allowanceType-${allowanceRuleCounter}" name="allowance_rules[${allowanceRuleCounter}][allowance_type]" onchange="handleAllowanceTypeChange(${allowanceRuleCounter})" required style="padding: 0.375rem; font-size: 0.8125rem;">
+                <option value="select">Select from List</option>
+                <option value="manual">Manual Type</option>
+            </select>
+        </div>
+        <div style="flex: 1;" id="allowanceSelectContainer-${allowanceRuleCounter}">
+            <label style="display: block; margin-bottom: 0.25rem; font-size: 0.75rem; font-weight: 600; color: #374151;">Allowance Name</label>
+            <select class="form-control" id="allowanceSelect-${allowanceRuleCounter}" name="allowance_rules[${allowanceRuleCounter}][allowance_name]" required style="padding: 0.375rem; font-size: 0.8125rem;">
                 <option value="">Select Allowance</option>
                 ${allowances.map(allowance =>
                     `<option value="${allowance.name}">${allowance.name}</option>`
                 ).join('')}
             </select>
         </div>
+        <div style="flex: 1; display: none;" id="allowanceManualContainer-${allowanceRuleCounter}">
+            <label style="display: block; margin-bottom: 0.25rem; font-size: 0.75rem; font-weight: 600; color: #374151;">Manual Allowance Name</label>
+            <input type="text" class="form-control" id="allowanceManual-${allowanceRuleCounter}" name="allowance_rules[${allowanceRuleCounter}][allowance_name_manual]" placeholder="Enter allowance name" style="padding: 0.375rem; font-size: 0.8125rem;">
+        </div>
         <div style="flex: 1;">
-            <label style="display: block; margin-bottom: 0.5rem; font-size: 0.875rem; font-weight: 600; color: #374151;">Price (Rs.)</label>
-            <input type="number" step="0.01" class="form-control" name="allowance_rules[${allowanceRuleCounter}][price]" placeholder="0.00" required>
+            <label style="display: block; margin-bottom: 0.25rem; font-size: 0.75rem; font-weight: 600; color: #374151;">Price (Rs.)</label>
+            <input type="number" step="0.01" class="form-control" name="allowance_rules[${allowanceRuleCounter}][price]" placeholder="0.00" required style="padding: 0.375rem; font-size: 0.8125rem;">
+        </div>
+        <div style="flex: 0 0 180px;">
+            <label style="display: block; margin-bottom: 0.25rem; font-size: 0.75rem; font-weight: 600; color: #374151;">Calculation Type</label>
+            <div style="display: flex; align-items: center; gap: 0.375rem; padding: 0.375rem; background: #f9fafb; border-radius: 0.25rem; border: 1px solid #e5e7eb;">
+                <input type="checkbox" id="attendanceMultiplier-${allowanceRuleCounter}" name="allowance_rules[${allowanceRuleCounter}][multiply_by_attendance]" value="1" style="width: 16px; height: 16px; cursor: pointer;">
+                <label for="attendanceMultiplier-${allowanceRuleCounter}" style="margin: 0; font-size: 0.75rem; color: #374151; cursor: pointer;">
+                    Attendance Count × Price
+                </label>
+            </div>
+            <small style="color: #6b7280; font-size: 0.6875rem; margin-top: 0.125rem; display: block;">
+                If checked, allowance = attendance days × price
+            </small>
         </div>
         <div style="flex: 0 0 auto;">
-            <button type="button" class="btn btn-danger" onclick="removeAllowanceRow(${allowanceRuleCounter})" style="margin-top: 1.5rem;">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <button type="button" class="btn btn-danger" onclick="removeAllowanceRow(${allowanceRuleCounter})" style="margin-top: 1.25rem; padding: 0.375rem 0.5rem;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="3,6 5,6 21,6"></polyline>
                     <path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6M8,6V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2V6"></path>
                     <line x1="10" y1="11" x2="10" y2="17"></line>
@@ -1994,6 +1829,30 @@ function addAllowanceRow() {
     `;
 
     container.appendChild(row);
+}
+
+function handleAllowanceTypeChange(rowId) {
+    const typeSelect = document.getElementById(`allowanceType-${rowId}`);
+    const selectContainer = document.getElementById(`allowanceSelectContainer-${rowId}`);
+    const manualContainer = document.getElementById(`allowanceManualContainer-${rowId}`);
+    const selectField = document.getElementById(`allowanceSelect-${rowId}`);
+    const manualField = document.getElementById(`allowanceManual-${rowId}`);
+
+    if (typeSelect.value === 'manual') {
+        // Show manual input, hide dropdown
+        selectContainer.style.display = 'none';
+        manualContainer.style.display = 'block';
+        selectField.removeAttribute('required');
+        manualField.setAttribute('required', 'required');
+        manualField.value = '';
+    } else {
+        // Show dropdown, hide manual input
+        selectContainer.style.display = 'block';
+        manualContainer.style.display = 'none';
+        manualField.removeAttribute('required');
+        selectField.setAttribute('required', 'required');
+        manualField.value = '';
+    }
 }
 
 function removeAllowanceRow(rowId) {
@@ -2020,11 +1879,43 @@ function loadExistingAllowanceRules() {
             addAllowanceRow();
             const lastRow = document.querySelector('.allowance-rule-row:last-child');
             if (lastRow) {
-                const allowanceSelect = lastRow.querySelector('select[name*="[allowance_name]"]');
+                const allowanceName = allowanceRule.allowance_name || '';
                 const priceInput = lastRow.querySelector('input[name*="[price]"]');
+                const typeSelect = lastRow.querySelector('select[name*="[allowance_type]"]');
 
-                if (allowanceSelect) allowanceSelect.value = allowanceRule.allowance_name || '';
+                // Extract row ID from the row element
+                const rowIdMatch = lastRow.id.match(/allowanceRuleRow-(\d+)/);
+                const rowId = rowIdMatch ? parseInt(rowIdMatch[1]) : null;
+
+                if (!rowId) {
+                    console.error('Could not extract row ID from allowance rule row');
+                    return;
+                }
+
+                // Check if the allowance name exists in the allowances list
+                const allowanceExists = allowances.some(allowance => allowance.name === allowanceName);
+
+                if (allowanceExists) {
+                    // Use dropdown
+                    if (typeSelect) typeSelect.value = 'select';
+                    handleAllowanceTypeChange(rowId);
+                    const allowanceSelect = lastRow.querySelector('select[name*="[allowance_name]"]');
+                    if (allowanceSelect) allowanceSelect.value = allowanceName;
+                } else if (allowanceName) {
+                    // Use manual input for non-empty allowance names
+                    if (typeSelect) typeSelect.value = 'manual';
+                    handleAllowanceTypeChange(rowId);
+                    const allowanceManual = lastRow.querySelector('input[name*="[allowance_name_manual]"]');
+                    if (allowanceManual) allowanceManual.value = allowanceName;
+                }
+
                 if (priceInput) priceInput.value = allowanceRule.price || '';
+
+                // Handle attendance multiplier checkbox
+                const attendanceMultiplier = lastRow.querySelector('input[type="checkbox"][name*="[multiply_by_attendance]"]');
+                if (attendanceMultiplier) {
+                    attendanceMultiplier.checked = allowanceRule.multiply_by_attendance === true || allowanceRule.multiply_by_attendance === 1 || allowanceRule.multiply_by_attendance === '1';
+                }
             }
         });
     }
@@ -2046,13 +1937,24 @@ function saveAllowanceRules() {
     const rows = document.querySelectorAll('.allowance-rule-row');
 
     rows.forEach(row => {
-        const allowanceName = row.querySelector('select[name*="[allowance_name]"]').value;
-        const price = row.querySelector('input[name*="[price]"]').value;
+        const allowanceType = row.querySelector('select[name*="[allowance_type]"]')?.value;
+        let allowanceName = '';
+
+        // Get allowance name based on type
+        if (allowanceType === 'manual') {
+            allowanceName = row.querySelector('input[name*="[allowance_name_manual]"]')?.value?.trim();
+        } else {
+            allowanceName = row.querySelector('select[name*="[allowance_name]"]')?.value?.trim();
+        }
+
+        const price = row.querySelector('input[name*="[price]"]')?.value;
+        const multiplyByAttendance = row.querySelector('input[type="checkbox"][name*="[multiply_by_attendance]"]')?.checked || false;
 
         if (allowanceName && price) {
             allowanceRules.push({
                 allowance_name: allowanceName,
-                price: parseFloat(price)
+                price: parseFloat(price),
+                multiply_by_attendance: multiplyByAttendance
             });
         }
     });
@@ -2177,7 +2079,13 @@ function addPromoterRow() {
                     </select>
                 </div>
                 <input type="text" class="table-input-small table-input-readonly promoter-tooltip" name="rows[${nextRowNumber}][promoter_name]" readonly data-tooltip="">
-                <input type="text" class="table-input-small table-input-readonly" name="rows[${nextRowNumber}][position]" readonly>
+                <div style="position: relative;">
+                    <select class="table-input-small" name="rows[${nextRowNumber}][position_id]" id="positionSelect-${nextRowNumber}" onchange="updatePositionFromDropdown(${nextRowNumber}, this)">
+                        <option value="">Select Position</option>
+                    </select>
+                    <input type="text" class="table-input-small" id="customPositionInput-${nextRowNumber}" name="rows[${nextRowNumber}][custom_position_name]" placeholder="Type custom position..." style="display:none;" oninput="updateCustomPosition(${nextRowNumber}, this)">
+                </div>
+                <input type="hidden" name="rows[${nextRowNumber}][position]" id="positionName-${nextRowNumber}">
             </div>
         </td>
         <td>
@@ -2211,7 +2119,15 @@ function addPromoterRow() {
             </div>
         </td>
         <td>
-            <button type="button" class="btn-danger" onclick="removeRow(${nextRowNumber})">×</button>
+            <div style="display: flex; gap: 0.25rem; justify-content: center;">
+                <button type="button" class="btn-duplicate" onclick="duplicateRow(${nextRowNumber})" title="Duplicate this promoter">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                </button>
+                <button type="button" class="btn-danger" onclick="removeRow(${nextRowNumber})" title="Remove this row">×</button>
+            </div>
         </td>
     `;
 
@@ -2220,7 +2136,7 @@ function addPromoterRow() {
     // Update the global rowCounter to match the actual number of rows
     rowCounter = nextRowNumber;
 
-    // Update promoter dropdowns to hide already selected promoters
+    // Update promoter dropdowns (duplicates now allowed)
     updatePromoterDropdowns();
 
     // Trigger initial calculations for the new row
@@ -2230,6 +2146,9 @@ function addPromoterRow() {
         // Don't call calculateAttendanceAmount here - it will be called when promoter is selected
         calculateRowNet(nextRowNumber);
         calculateGrandTotal();
+
+        // Populate position dropdown for the new row
+        populatePositionDropdown(nextRowNumber);
     }, 100);
 
     console.log(`Added promoter row ${nextRowNumber} successfully`);
@@ -2337,27 +2256,14 @@ function getSelectedPromoterIds() {
 }
 
 function updatePromoterDropdowns() {
-    const selectedIds = getSelectedPromoterIds();
+    // Duplicate promoters are now allowed, so we show all options
     const promoterSelects = document.querySelectorAll('select[name*="[promoter_id]"]');
 
     promoterSelects.forEach(select => {
-        const currentValue = select.value;
         const options = select.querySelectorAll('option');
-
         options.forEach(option => {
-            if (option.value === '') {
-                // Always show the "Select" option
-                option.style.display = 'block';
-            } else if (option.value === currentValue) {
-                // Always show the currently selected option
-                option.style.display = 'block';
-            } else if (selectedIds.includes(option.value)) {
-                // Hide options that are selected in other rows
-                option.style.display = 'none';
-            } else {
-                // Show available options
-                option.style.display = 'block';
-            }
+            // Show all options - duplicates are allowed
+            option.style.display = 'block';
         });
     });
 }
@@ -2455,9 +2361,8 @@ function searchPromoters(rowNum, q, limit = 10, inputEl = null) {
 
     promoterSearchDebounceTimers[rowNum] = setTimeout(async () => {
         try {
-            const exclude = getSelectedPromoterIds();
+            // Duplicates are now allowed - don't exclude already selected promoters
             const params = new URLSearchParams({ q, limit: limit.toString() });
-            exclude.forEach(id => params.append('exclude[]', id));
             const url = `${window.location.origin}${window.location.pathname.includes('/admin/') ? '' : ''}/admin/promoters/ajax/search?` + params.toString();
 
             const res = await fetch(url, {
@@ -2675,30 +2580,7 @@ function selectPromoterSuggestion(rowNum, el) {
     const searchBox = row.querySelector(`#promoterSuggestions-${rowNum}`) || document.getElementById('promoterSuggestions-' + rowNum);
     const searchInput = row.querySelector(`input[name*='[promoter_search]']`);
 
-    // Duplicate detection: if this promoter already selected in another row, highlight that row and abort
-    const targetPromoterDbId = el.dataset.id;
-    if (targetPromoterDbId) {
-        const allSelects = document.querySelectorAll("select[name*='[promoter_id]']");
-        for (const sel of allSelects) {
-            if (sel === hiddenSelect) continue;
-            if (sel.value && sel.value === targetPromoterDbId) {
-                const existingRow = sel.closest('tr');
-                if (existingRow) {
-                    existingRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    const originalBg = existingRow.style.backgroundColor;
-                    existingRow.style.transition = 'background-color 0.6s ease';
-                    existingRow.style.backgroundColor = '#fff3cd'; // soft warning yellow
-                    setTimeout(() => { existingRow.style.backgroundColor = originalBg || ''; }, 1200);
-                }
-                if (typeof Swal !== 'undefined') {
-                    Swal.fire({ icon: 'warning', title: 'Duplicate Promoter', text: 'This promoter is already added. Highlighted the existing row.' });
-                }
-                // Do not set duplicate
-                if (searchBox) { searchBox.style.display = 'none'; searchBox.innerHTML = ''; }
-                return;
-            }
-        }
-    }
+    // Duplicate promoters are now allowed - removed duplicate detection
 
     const option = document.createElement('option');
     option.value = el.dataset.id;
@@ -2735,7 +2617,7 @@ function selectPromoterSuggestion(rowNum, el) {
     // calculateAttendanceAmount is now called within calculateRowTotal
     calculateGrandTotal();
 
-    // Update other dropdowns for duplicate prevention
+    // Update other dropdowns (duplicates now allowed)
     updatePromoterDropdowns();
 }
 // Expose to global scope for inline handlers
@@ -2744,27 +2626,7 @@ if (typeof window !== 'undefined') {
 }
 
 function validatePromoterSelection(selectElement) {
-    const selectedValue = selectElement.value;
-    if (!selectedValue) return true; // Allow empty selection
-
-    const selectedIds = getSelectedPromoterIds();
-    const duplicateCount = selectedIds.filter(id => id === selectedValue).length;
-
-    if (duplicateCount > 1) {
-        // Reset to empty selection
-        selectElement.value = '';
-
-        // Show error message
-        Swal.fire({
-            icon: 'error',
-            title: 'Duplicate Promoter',
-            text: 'This promoter is already selected in another row. Please choose a different promoter.',
-            confirmButtonText: 'OK'
-        });
-
-        return false;
-    }
-
+    // Duplicate promoters are now allowed - validation always passes
     return true;
 }
 
@@ -2779,13 +2641,28 @@ async function updatePromoterDetails(rowNum, selectElement) {
 
     if (selectedOption && selectedOption.dataset.name) {
         const promoterNameInput = row.querySelector('input[name="rows[' + rowNum + '][promoter_name]"]');
-        const positionInput = row.querySelector('input[name="rows[' + rowNum + '][position]"]');
+        const positionSelect = document.getElementById(`positionSelect-${rowNum}`);
+        const positionNameInput = document.getElementById(`positionName-${rowNum}`);
         const bankNameInput = row.querySelector('input[name="rows[' + rowNum + '][bank_name]"]');
         const bankBranchInput = row.querySelector('input[name="rows[' + rowNum + '][bank_branch]"]');
         const bankAccountInput = row.querySelector('input[name="rows[' + rowNum + '][bank_account_number]"]');
 
         promoterNameInput.value = selectedOption.dataset.name;
-        positionInput.value = selectedOption.dataset.position;
+
+        // Populate position dropdown from salary rules
+        populatePositionDropdown(rowNum);
+
+        // Try to select the promoter's position if available
+        const promoterPositionId = selectedOption.dataset.positionId;
+        if (positionSelect && promoterPositionId) {
+            positionSelect.value = promoterPositionId;
+            updatePositionFromDropdown(rowNum, positionSelect);
+        } else if (selectedOption.dataset.position) {
+            // Fallback: set position name if position ID not available
+            if (positionNameInput) {
+                positionNameInput.value = selectedOption.dataset.position;
+            }
+        }
 
         // Populate bank details
         if (bankNameInput) bankNameInput.value = selectedOption.dataset.bank || '';
@@ -2807,13 +2684,15 @@ async function updatePromoterDetails(rowNum, selectElement) {
         updatePromoterDropdowns();
     } else {
         const promoterNameInput = row.querySelector('input[name="rows[' + rowNum + '][promoter_name]"]');
-        const positionInput = row.querySelector('input[name="rows[' + rowNum + '][position]"]');
+        const positionSelect = document.getElementById(`positionSelect-${rowNum}`);
+        const positionNameInput = document.getElementById(`positionName-${rowNum}`);
         const bankNameInput = row.querySelector('input[name="rows[' + rowNum + '][bank_name]"]');
         const bankBranchInput = row.querySelector('input[name="rows[' + rowNum + '][bank_branch]"]');
         const bankAccountInput = row.querySelector('input[name="rows[' + rowNum + '][bank_account_number]"]');
 
         promoterNameInput.value = '';
-        positionInput.value = '';
+        if (positionSelect) positionSelect.value = '';
+        if (positionNameInput) positionNameInput.value = '';
 
         // Clear bank details
         if (bankNameInput) bankNameInput.value = '';
@@ -2945,8 +2824,7 @@ function updateAttendanceDates() {
     }
 
     isUpdatingAttendanceDates = true;
-    const jobSelect = document.getElementById('job_id');
-    const selectedOption = jobSelect.options[jobSelect.selectedIndex];
+    const jobHidden = document.getElementById('job_id');
     const noJobMessage = document.getElementById('noJobMessage');
     const noEndDateMessage = document.getElementById('noEndDateMessage');
     const salaryTableContainer = document.getElementById('salaryTableContainer');
@@ -2955,10 +2833,10 @@ function updateAttendanceDates() {
     const allowanceRuleBtn = document.getElementById('allowanceRuleBtn');
     const attendanceLegend = document.getElementById('attendanceLegend');
 
-    if (selectedOption.value) {
-        const startDate = selectedOption.getAttribute('data-start-date');
-        const endDate = selectedOption.getAttribute('data-end-date');
-        const jobId = selectedOption.value;
+    if (jobHidden.value) {
+        const startDate = jobHidden.getAttribute('data-start-date');
+        const endDate   = jobHidden.getAttribute('data-end-date');
+        const jobId     = jobHidden.value;
 
         // Check if end date is null
         if (!endDate || endDate === 'null' || endDate === '') {
@@ -3017,119 +2895,32 @@ function updateAttendanceDates() {
                 // Convert Set to sorted array
                 const finalDates = Array.from(allDates).sort();
 
-                // Update attendance headers and rows with custom dates
+                // Always update headers with the resolved dates
                 updateAttendanceHeaders(finalDates);
                 updateExistingRows(finalDates);
                 currentAttendanceDates = finalDates;
 
-                // Show table but with custom dates if available
-                if (salaryTableContainer) {
-                    salaryTableContainer.style.display = 'block';
-                }
-                if (attendanceLegend) {
-                    attendanceLegend.style.display = finalDates.length > 0 ? 'block' : 'none';
-                }
-
-                // Enable buttons
-                if (addPromoterBtn) addPromoterBtn.disabled = false;
-                if (salaryRuleBtn) salaryRuleBtn.disabled = false;
-                if (allowanceRuleBtn) allowanceRuleBtn.disabled = false;
-
-                // Enable add custom date button when no end date (only allow custom dates if null end date)
-                const addCustomDateBtn = document.getElementById('addCustomDateBtn');
-                if (addCustomDateBtn) {
-                    addCustomDateBtn.disabled = false;
-                }
-
-                // Load row data from the fetched salary sheets (if available)
+                // Show picker if existing sheets found, otherwise start fresh
                 if (data.success && data.salarySheets && data.salarySheets.length > 0) {
-                    // Get the most recent salary sheet
-                    const mostRecentSheet = data.salarySheets[0];
-                    // Fetch JSON data for this sheet to load the rows
-                    fetch(`/admin/salary-sheets/${mostRecentSheet.id}/json`)
-                        .then(response => response.json())
-                        .then(jsonData => {
-                            console.log('Loading row data from salary sheet:', jsonData);
-                            // Update form fields (but skip job_id update to prevent loop)
-                            if (jsonData.sheet_number) {
-                                document.getElementById('sheet_number').value = jsonData.sheet_number;
-                            }
-                            if (jsonData.status) {
-                                const statusSelect = document.querySelector('select[name="status"]');
-                                if (statusSelect) {
-                                    statusSelect.value = jsonData.status;
-                                }
-                            }
-
-                            // Update table rows with the data
-                            if (jsonData.rows && typeof jsonData.rows === 'object' && Object.keys(jsonData.rows).length > 0) {
-                                clearAllRows();
-                                let rowIndex = 0;
-                                for (const [rowKey, rowData] of Object.entries(jsonData.rows)) {
-                                    if (rowData.promoter_id) {
-                                        addPromoterRowFromJson(rowData, rowIndex);
-                                        rowIndex++;
-                                    }
-                                }
-
-                                // Recalculate totals after loading
-                                setTimeout(() => {
-                                    const rows = document.querySelectorAll('#promoterRows tr');
-                                    rows.forEach((row, index) => {
-                                        const rowNum = index + 1;
-                                        let total = 0;
-                                        const attendanceInputs = row.querySelectorAll('input[name*="[attendance]["]');
-                                        attendanceInputs.forEach(input => {
-                                            total += parseFloat(input.value) || 0;
-                                        });
-                                        const totalInput = row.querySelector(`input[name="rows[${rowNum}][attendance_total]"]`);
-                                        if (totalInput) {
-                                            totalInput.value = total;
-                                        }
-                                        calculateRowNet(rowNum);
-                                    });
-                                    calculateGrandTotal();
-                                }, 300);
-                            } else {
-                                // No rows in the data - clear and add empty row
-                                clearAllRows();
-                                addPromoterRow();
-                                calculateGrandTotal();
-                            }
-
-                            // Continue with other initialization
-                            initializeAfterDatesUpdate();
-                            isUpdatingAttendanceDates = false;
-                        })
-                        .catch(error => {
-                            console.error('Error loading row data:', error);
-                            // If error loading data, clear existing rows and add empty row
-                            clearAllRows();
-                            addPromoterRow();
-                            calculateGrandTotal();
-                            // Continue with initialization even if row data fails to load
-                            initializeAfterDatesUpdate();
-                            isUpdatingAttendanceDates = false;
-                        });
+                    scShowPicker(data.salarySheets, finalDates);
+                    isUpdatingAttendanceDates = false;
                 } else {
-                    // No salary sheets found - clear existing data and reset
+                    // No salary sheets — show empty table
                     clearAllRows();
-                    addPromoterRow(); // Add one empty row
-
-                    // Reset form fields
+                    addPromoterRow();
                     const sheetNumberInput = document.getElementById('sheet_number');
-                    if (sheetNumberInput) {
-                        sheetNumberInput.value = '';
-                    }
-                    const statusSelect = document.querySelector('select[name="status"]');
-                    if (statusSelect) {
-                        statusSelect.value = 'draft';
-                    }
-
-                    // Reset grand total
+                    if (sheetNumberInput) sheetNumberInput.value = '';
+                    selectStatusOption('draft', 'Draft');
                     calculateGrandTotal();
-
-                    // Continue with initialization
+                    if (salaryTableContainer) salaryTableContainer.style.display = 'block';
+                    if (attendanceLegend) attendanceLegend.style.display = finalDates.length > 0 ? 'block' : 'none';
+                    // Enable buttons
+                    if (addPromoterBtn) addPromoterBtn.disabled = false;
+                    const bulkBtn = document.getElementById('bulkAddRowsBtn'); if (bulkBtn) bulkBtn.disabled = false;
+                    if (salaryRuleBtn) salaryRuleBtn.disabled = false;
+                    if (allowanceRuleBtn) allowanceRuleBtn.disabled = false;
+                    const addCustomDateBtn = document.getElementById('addCustomDateBtn');
+                    if (addCustomDateBtn) addCustomDateBtn.disabled = false;
                     initializeAfterDatesUpdate();
                     isUpdatingAttendanceDates = false;
                 }
@@ -3151,6 +2942,7 @@ function updateAttendanceDates() {
 
                 // Enable buttons
                 if (addPromoterBtn) addPromoterBtn.disabled = false;
+                const bulkBtn = document.getElementById('bulkAddRowsBtn'); if (bulkBtn) bulkBtn.disabled = false;
                 if (salaryRuleBtn) salaryRuleBtn.disabled = false;
                 if (allowanceRuleBtn) allowanceRuleBtn.disabled = false;
 
@@ -3230,95 +3022,19 @@ function updateAttendanceDates() {
                 updateExistingRows(finalDates);
                 currentAttendanceDates = finalDates;
 
-                // Load row data from the fetched salary sheets (if available)
+                // Show picker if existing sheets found, otherwise start fresh
                 if (data.success && data.salarySheets && data.salarySheets.length > 0) {
-                    // Get the most recent salary sheet
-                    const mostRecentSheet = data.salarySheets[0];
-                    // Fetch JSON data for this sheet to load the rows
-                    fetch(`/admin/salary-sheets/${mostRecentSheet.id}/json`)
-                        .then(response => response.json())
-                        .then(jsonData => {
-                            console.log('Loading row data from salary sheet:', jsonData);
-                            // Update form fields (but skip job_id update to prevent loop)
-                            if (jsonData.sheet_number) {
-                                document.getElementById('sheet_number').value = jsonData.sheet_number;
-                            }
-                            if (jsonData.status) {
-                                const statusSelect = document.querySelector('select[name="status"]');
-                                if (statusSelect) {
-                                    statusSelect.value = jsonData.status;
-                                }
-                            }
-
-                            // Update table rows with the data
-                            if (jsonData.rows && typeof jsonData.rows === 'object' && Object.keys(jsonData.rows).length > 0) {
-                                clearAllRows();
-                                let rowIndex = 0;
-                                for (const [rowKey, rowData] of Object.entries(jsonData.rows)) {
-                                    if (rowData.promoter_id) {
-                                        addPromoterRowFromJson(rowData, rowIndex);
-                                        rowIndex++;
-                                    }
-                                }
-
-                                // Recalculate totals after loading
-                                setTimeout(() => {
-                                    const rows = document.querySelectorAll('#promoterRows tr');
-                                    rows.forEach((row, index) => {
-                                        const rowNum = index + 1;
-                                        let total = 0;
-                                        const attendanceInputs = row.querySelectorAll('input[name*="[attendance]["]');
-                                        attendanceInputs.forEach(input => {
-                                            total += parseFloat(input.value) || 0;
-                                        });
-                                        const totalInput = row.querySelector(`input[name="rows[${rowNum}][attendance_total]"]`);
-                                        if (totalInput) {
-                                            totalInput.value = total;
-                                        }
-                                        calculateRowNet(rowNum);
-                                    });
-                                    calculateGrandTotal();
-                                }, 300);
-                            } else {
-                                // No rows in the data - clear and add empty row
-                                clearAllRows();
-                                addPromoterRow();
-                                calculateGrandTotal();
-                            }
-
-                            // Continue with other initialization
-                            initializeAfterDatesUpdate();
-                            isUpdatingAttendanceDates = false;
-                        })
-                        .catch(error => {
-                            console.error('Error loading row data:', error);
-                            // If error loading data, clear existing rows and add empty row
-                            clearAllRows();
-                            addPromoterRow();
-                            calculateGrandTotal();
-                            // Continue with initialization even if row data fails to load
-                            initializeAfterDatesUpdate();
-                            isUpdatingAttendanceDates = false;
-                        });
+                    scShowPicker(data.salarySheets, finalDates);
+                    isUpdatingAttendanceDates = false;
                 } else {
-                    // No salary sheets found - clear existing data and reset
+                    // No salary sheets — show empty table
                     clearAllRows();
-                    addPromoterRow(); // Add one empty row
-
-                    // Reset form fields
+                    addPromoterRow();
                     const sheetNumberInput = document.getElementById('sheet_number');
-                    if (sheetNumberInput) {
-                        sheetNumberInput.value = '';
-                    }
-                    const statusSelect = document.querySelector('select[name="status"]');
-                    if (statusSelect) {
-                        statusSelect.value = 'draft';
-                    }
-
-                    // Reset grand total
+                    if (sheetNumberInput) sheetNumberInput.value = '';
+                    selectStatusOption('draft', 'Draft');
                     calculateGrandTotal();
-
-                    // Continue with initialization
+                    if (salaryTableContainer) salaryTableContainer.style.display = 'block';
                     initializeAfterDatesUpdate();
                     isUpdatingAttendanceDates = false;
                 }
@@ -3350,13 +3066,16 @@ function updateAttendanceDates() {
         clearAllRows();
         addPromoterRow();
 
-        // Hide table and show message
+        // Hide table, picker, and show message
         noJobMessage.style.display = 'block';
         salaryTableContainer.style.display = 'none';
         attendanceLegend.style.display = 'none';
+        scHidePicker();
 
         // Disable buttons
         addPromoterBtn.disabled = true;
+        const bulkAddRowsBtn = document.getElementById('bulkAddRowsBtn');
+        if (bulkAddRowsBtn) bulkAddRowsBtn.disabled = true;
         salaryRuleBtn.disabled = true;
         allowanceRuleBtn.disabled = true;
         const addCustomDateBtn = document.getElementById('addCustomDateBtn');
@@ -3379,8 +3098,7 @@ function updateAttendanceDates() {
 
 // Helper function to initialize after dates are updated
 function initializeAfterDatesUpdate() {
-    const jobSelect = document.getElementById('job_id');
-    const selectedOption = jobSelect.options[jobSelect.selectedIndex];
+    const jobHidden2 = document.getElementById('job_id');
     const noJobMessage = document.getElementById('noJobMessage');
     const noEndDateMessage = document.getElementById('noEndDateMessage');
     const salaryTableContainer = document.getElementById('salaryTableContainer');
@@ -3389,13 +3107,20 @@ function initializeAfterDatesUpdate() {
     const allowanceRuleBtn = document.getElementById('allowanceRuleBtn');
     const attendanceLegend = document.getElementById('attendanceLegend');
 
-    if (selectedOption && selectedOption.value) {
+    if (jobHidden2 && jobHidden2.value) {
         // Check if end date exists
-        const endDate = selectedOption.getAttribute('data-end-date');
+        const endDate = jobHidden2.getAttribute('data-end-date');
         const hasEndDate = endDate && endDate !== 'null' && endDate !== '';
 
         // Load position salary rules for the selected job
-        loadPositionSalaryRules();
+        loadPositionSalaryRules().then(() => {
+            // Populate position dropdowns for all existing rows
+            const rows = document.querySelectorAll('#promoterRows tr');
+            rows.forEach((row, idx) => {
+                const rowNum = idx + 1;
+                populatePositionDropdown(rowNum);
+            });
+        });
 
         // Update payment headers with job allowance rules
         const jobAllowances = getCurrentJobAllowances();
@@ -3430,6 +3155,7 @@ function initializeAfterDatesUpdate() {
 
         // Enable buttons
         if (addPromoterBtn) addPromoterBtn.disabled = false;
+                const bulkBtn = document.getElementById('bulkAddRowsBtn'); if (bulkBtn) bulkBtn.disabled = false;
         if (salaryRuleBtn) salaryRuleBtn.disabled = false;
         if (allowanceRuleBtn) allowanceRuleBtn.disabled = false;
         const addCustomDateBtn = document.getElementById('addCustomDateBtn');
@@ -3593,12 +3319,15 @@ function getRowNumber(row) {
 
 // Global variable to store position salary rules
 let positionSalaryRules = {};
+// Store all salary rules with position details
+let allSalaryRules = [];
 
 // Function to load position salary rules for the selected job
 async function loadPositionSalaryRules() {
     const selectedJobId = document.getElementById('job_id').value;
     if (!selectedJobId) {
         positionSalaryRules = {};
+        allSalaryRules = [];
         return;
     }
 
@@ -3611,17 +3340,180 @@ async function loadPositionSalaryRules() {
             rule.job_id == selectedJobId || rule.job_id === null
         );
 
-        // Store rules in a lookup object
+        // Store all rules with position details
+        allSalaryRules = relevantRules;
+
+        // Store rules in a lookup object for salary calculation
         positionSalaryRules = {};
         relevantRules.forEach(rule => {
             positionSalaryRules[rule.position_id] = parseFloat(rule.amount);
         });
 
         console.log('Loaded position salary rules:', positionSalaryRules);
+        console.log('All salary rules with positions:', allSalaryRules);
     } catch (error) {
         console.error('Error loading position salary rules:', error);
         positionSalaryRules = {};
+        allSalaryRules = [];
     }
+}
+
+// Function to populate position dropdown from salary rules
+function populatePositionDropdown(rowNum) {
+    const positionSelect = document.getElementById(`positionSelect-${rowNum}`);
+    const positionNameInput = document.getElementById(`positionName-${rowNum}`);
+
+    if (!positionSelect) return;
+
+    // Clear existing options except the first one
+    positionSelect.innerHTML = '<option value="">Select Position</option>';
+
+    // Get unique positions from salary rules
+    const uniquePositions = [];
+    const positionMap = new Map();
+
+    allSalaryRules.forEach(rule => {
+        if (rule.position && rule.position.id && !positionMap.has(rule.position.id)) {
+            positionMap.set(rule.position.id, rule.position);
+            uniquePositions.push(rule.position);
+        }
+    });
+
+    // Add positions to dropdown
+    uniquePositions.forEach(position => {
+        const option = document.createElement('option');
+        option.value = position.id;
+        option.textContent = position.position_name;
+        option.dataset.positionName = position.position_name;
+        positionSelect.appendChild(option);
+    });
+
+    // Add custom position option
+    const customOption = document.createElement('option');
+    customOption.value = 'custom';
+    customOption.textContent = '+ Custom Position...';
+    customOption.dataset.positionName = '';
+    positionSelect.appendChild(customOption);
+
+    // If promoter has a position, try to select it
+    const row = positionSelect.closest('tr');
+    const promoterSelect = row.querySelector('select[name*="[promoter_id]"]');
+    if (promoterSelect && promoterSelect.value) {
+        const selectedOption = promoterSelect.options[promoterSelect.selectedIndex];
+        const promoterPositionId = selectedOption.dataset.positionId;
+        if (promoterPositionId) {
+            positionSelect.value = promoterPositionId;
+            updatePositionFromDropdown(rowNum, positionSelect);
+        }
+    }
+}
+
+// Function to update position name when dropdown changes
+function updatePositionFromDropdown(rowNum, selectElement) {
+    const selectedOption = selectElement.options[selectElement.selectedIndex];
+    const positionNameInput = document.getElementById(`positionName-${rowNum}`);
+    const customInput = document.getElementById(`customPositionInput-${rowNum}`);
+
+    // Handle custom position selection
+    if (selectedOption && selectedOption.value === 'custom') {
+        if (customInput) {
+            customInput.style.display = 'block';
+            selectElement.style.display = 'none';
+            customInput.focus();
+            if (positionNameInput) positionNameInput.value = customInput.value || '';
+        }
+        return;
+    }
+
+    // Show select, hide custom input
+    if (customInput) customInput.style.display = 'none';
+    selectElement.style.display = 'block';
+
+    if (selectedOption && selectedOption.value) {
+        const positionName = selectedOption.dataset.positionName || selectedOption.textContent;
+        if (positionNameInput) {
+            positionNameInput.value = positionName;
+        }
+
+        // Get position ID and recalculate attendance amount when position changes
+        const positionId = selectedOption.value;
+        const row = selectElement.closest('tr');
+        const totalInput = row.querySelector(`input[name="rows[${rowNum}][attendance_total]"]`);
+        const presentDays = totalInput ? parseFloat(totalInput.value) || 0 : 0;
+
+        // Get position salary from salary rules
+        const positionSalary = getPositionSalary(positionId);
+
+        // Calculate attendance amount: position salary × present days
+        const attendanceAmount = positionSalary * presentDays;
+
+        // Update attendance amount field
+        const attendanceAmountInput = row.querySelector(`input[name="rows[${rowNum}][attendance_amount]"]`);
+        if (attendanceAmountInput) {
+            attendanceAmountInput.value = attendanceAmount.toFixed(2);
+            attendanceAmountInput.dataset.lastCalculatedAmount = attendanceAmount.toFixed(2);
+        }
+
+        // Update payment amount field (basic salary) with the same value
+        const paymentAmountInput = row.querySelector(`input[name="rows[${rowNum}][amount]"]`);
+        if (paymentAmountInput) {
+            const currentAmount = parseFloat(paymentAmountInput.value) || 0;
+            const hasCustomAmount = paymentAmountInput.dataset.customAmount === 'true';
+            const loadedFromDb = paymentAmountInput.dataset.loadedFromDb === 'true';
+            const manuallyEdited = paymentAmountInput.dataset.manuallyEdited === 'true';
+
+            // Only update if it's not manually edited, not loaded from DB, or is empty
+            if (!hasCustomAmount && !loadedFromDb && !manuallyEdited || currentAmount === 0) {
+                paymentAmountInput.value = attendanceAmount.toFixed(2);
+                paymentAmountInput.dataset.lastSyncedAmount = attendanceAmount.toFixed(2);
+            }
+        }
+
+        // Recalculate coordinator fee and net amount
+        calculateCoordinatorFee(rowNum);
+        calculateRowNet(rowNum);
+    } else {
+        if (positionNameInput) {
+            positionNameInput.value = '';
+        }
+
+        // Clear attendance amount if no position selected
+        const row = selectElement.closest('tr');
+        const attendanceAmountInput = row.querySelector(`input[name="rows[${rowNum}][attendance_amount]"]`);
+        if (attendanceAmountInput) {
+            attendanceAmountInput.value = '0.00';
+        }
+
+        const paymentAmountInput = row.querySelector(`input[name="rows[${rowNum}][amount]"]`);
+        if (paymentAmountInput && !paymentAmountInput.dataset.customAmount) {
+            paymentAmountInput.value = '0.00';
+        }
+
+        calculateRowNet(rowNum);
+    }
+}
+
+// Called when user types in the custom position text input
+function updateCustomPosition(rowNum, inputEl) {
+    const positionNameInput = document.getElementById(`positionName-${rowNum}`);
+    if (positionNameInput) positionNameInput.value = inputEl.value.trim();
+
+    // Clear the hidden position_id so the controller knows this is custom
+    const positionSelect = document.getElementById(`positionSelect-${rowNum}`);
+    if (positionSelect) positionSelect.value = 'custom';
+
+    // Allow user to go back to dropdown by pressing Escape
+    inputEl.onkeydown = function(e) {
+        if (e.key === 'Escape') {
+            inputEl.value = '';
+            if (positionNameInput) positionNameInput.value = '';
+            inputEl.style.display = 'none';
+            if (positionSelect) {
+                positionSelect.style.display = 'block';
+                positionSelect.value = '';
+            }
+        }
+    };
 }
 
 // Function to get salary amount for a position
@@ -3687,10 +3579,25 @@ function calculateRowTotal(rowNum) {
             // Set flag to indicate attendance was just updated - this will force coordination fee recalculation
             coordinationFeeInput.setAttribute('data-attendance-updated', 'true');
         }
+
+        // Clear custom allowance flags for allowances with multiply_by_attendance enabled
+        const allowanceInputs = row.querySelectorAll(`input[name^="rows[${rowNum}][allowances]"]`);
+        allowanceInputs.forEach(input => {
+            const multiplyByAttendance = input.dataset.multiplyByAttendance === 'true';
+            if (multiplyByAttendance) {
+                // Clear custom allowance flags to allow recalculation
+                input.removeAttribute('data-custom-allowance');
+                input.removeAttribute('data-manually-edited');
+                input.removeAttribute('data-loaded-from-db');
+                input.setAttribute('data-attendance-updated', 'true');
+            }
+        });
     }
 
     // Calculate attendance amount based on position salary
     calculateAttendanceAmount(rowNum, total).then(() => {
+        // Calculate allowances based on attendance (if multiply_by_attendance is enabled)
+        calculateAllowances(rowNum, total);
         // Apply job settings to this row when attendance changes
         applyJobSettingsToRow(rowNum);
         calculateRowNet(rowNum);
@@ -3814,8 +3721,17 @@ async function calculateAttendanceAmount(rowNum, presentDays) {
         await loadPositionSalaryRules();
     }
 
+    // Get position ID from dropdown (if available) or from promoter
+    const positionSelect = row.querySelector(`select[name="rows[${rowNum}][position_id]"]`);
+    let positionId = null;
+    if (positionSelect && positionSelect.value) {
+        positionId = positionSelect.value;
+    } else if (promoter && promoter.position_id) {
+        positionId = promoter.position_id;
+    }
+
     // Get position salary from loaded rules
-    const positionSalary = getPositionSalary(promoter.position_id);
+    const positionSalary = getPositionSalary(positionId);
 
     // Calculate attendance amount: position salary × present days
     const attendanceAmount = positionSalary * presentDays;
@@ -3864,6 +3780,45 @@ async function calculateAttendanceAmount(rowNum, presentDays) {
         // Trigger net calculation since amount might have changed
         calculateRowNet(rowNum);
     }
+}
+
+// Function to calculate allowances based on attendance when multiply_by_attendance is enabled
+function calculateAllowances(rowNum, presentDays) {
+    const row = document.querySelector(`tr:has(input[name="rows[${rowNum}][amount]"])`);
+    if (!row) return;
+
+    // Get all allowance inputs in this row
+    const allowanceInputs = row.querySelectorAll(`input[name^="rows[${rowNum}][allowances]"]`);
+
+    allowanceInputs.forEach(input => {
+        const multiplyByAttendance = input.dataset.multiplyByAttendance === 'true';
+        const allowancePrice = parseFloat(input.dataset.allowancePrice || 0);
+        const hasCustomValue = input.dataset.customAllowance === 'true';
+        const loadedFromDb = input.dataset.loadedFromDb === 'true';
+        const manuallyEdited = input.dataset.manuallyEdited === 'true';
+        const attendanceUpdated = input.dataset.attendanceUpdated === 'true';
+
+        // Only auto-calculate if multiply_by_attendance is enabled
+        if (multiplyByAttendance) {
+            const currentValue = parseFloat(input.value) || 0;
+            const previousCalculatedValue = parseFloat(input.dataset.lastCalculatedValue || 0);
+            const calculatedValue = presentDays * allowancePrice;
+
+            // Force update if attendance was just updated (custom value should be cleared)
+            // OR update if:
+            // 1. Field hasn't been manually edited, AND
+            // 2. Field is empty/zero OR matches previous calculated value (was auto-calculated)
+            if (attendanceUpdated || (!hasCustomValue && !loadedFromDb && !manuallyEdited &&
+                (currentValue === 0 || currentValue === previousCalculatedValue))) {
+                input.value = calculatedValue.toFixed(2);
+                input.dataset.lastCalculatedValue = calculatedValue.toFixed(2);
+                // Clear the attendance updated flag after updating
+                if (attendanceUpdated) {
+                    input.removeAttribute('data-attendance-updated');
+                }
+            }
+        }
+    });
 }
 
 function calculateRowNet(rowNum) {
@@ -3947,6 +3902,12 @@ function markAsCustom(inputElement, fieldType) {
     }
 }
 
+// Mark allowance field as custom when user manually edits it
+function markAllowanceAsCustom(inputElement, allowanceName) {
+    inputElement.dataset.customAllowance = 'true';
+    inputElement.dataset.manuallyEdited = 'true';
+}
+
 function calculateGrandTotal() {
     const rows = document.querySelectorAll('#promoterRows tr');
     let totalEarnings = 0;
@@ -4016,6 +3977,226 @@ function generateSheetNumber() {
     document.getElementById('sheet_number').value = sheetNumber;
 }
 
+// Function to duplicate a promoter row
+function duplicateRow(rowNum) {
+    const jobSelect = document.getElementById('job_id');
+    if (!jobSelect.value) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Job Selection Required',
+            text: 'Please select a job first before duplicating rows.',
+            confirmButtonText: 'OK'
+        });
+        return;
+    }
+
+    // Find the source row
+    const sourceRow = document.querySelector(`tr:has(input[name="rows[${rowNum}][promoter_id]"])`);
+    if (!sourceRow) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Could not find the row to duplicate.',
+            confirmButtonText: 'OK'
+        });
+        return;
+    }
+
+    // Get all data from the source row
+    const sourcePromoterId = sourceRow.querySelector(`select[name="rows[${rowNum}][promoter_id]"]`)?.value || '';
+    const sourcePromoterSearch = sourceRow.querySelector(`input[name="rows[${rowNum}][promoter_search]"]`)?.value || '';
+    const sourcePromoterName = sourceRow.querySelector(`input[name="rows[${rowNum}][promoter_name]"]`)?.value || '';
+    const sourcePositionId = sourceRow.querySelector(`select[name="rows[${rowNum}][position_id]"]`)?.value || '';
+    const sourcePositionName = sourceRow.querySelector(`input[name="rows[${rowNum}][position]"]`)?.value || '';
+    const sourceLocation = sourceRow.querySelector(`input[name="rows[${rowNum}][location]"]`)?.value || '';
+    const sourceBankName = sourceRow.querySelector(`input[name="rows[${rowNum}][bank_name]"]`)?.value || '';
+    const sourceBankBranch = sourceRow.querySelector(`input[name="rows[${rowNum}][bank_branch]"]`)?.value || '';
+    const sourceBankAccount = sourceRow.querySelector(`input[name="rows[${rowNum}][bank_account_number]"]`)?.value || '';
+    const sourceCoordinatorId = sourceRow.querySelector(`select[name="rows[${rowNum}][coordinator_id]"]`)?.value || '';
+    const sourceCoordinatorSearch = sourceRow.querySelector(`input[name="rows[${rowNum}][coordinator_search]"]`)?.value || '';
+    const sourceCoordinatorName = sourceRow.querySelector(`input[name="rows[${rowNum}][current_coordinator]"]`)?.value || '';
+    const sourceCoordinationFee = sourceRow.querySelector(`input[name="rows[${rowNum}][coordination_fee]"]`)?.value || '';
+    const sourceAttendanceAmount = sourceRow.querySelector(`input[name="rows[${rowNum}][attendance_amount]"]`)?.value || '';
+    const sourceAttendanceTotal = sourceRow.querySelector(`input[name="rows[${rowNum}][attendance_total]"]`)?.value || '';
+
+    // Get attendance values for all dates
+    const attendanceInputs = sourceRow.querySelectorAll(`input[name^="rows[${rowNum}][attendance]"]`);
+    const attendanceData = {};
+    attendanceInputs.forEach(input => {
+        const name = input.name;
+        const dateMatch = name.match(/\[attendance\]\[(.+?)\]/);
+        if (dateMatch) {
+            attendanceData[dateMatch[1]] = input.value || '0';
+        }
+    });
+
+    // Get allowance values
+    const allowanceData = {};
+    const allowanceInputs = sourceRow.querySelectorAll(`input[name^="rows[${rowNum}][allowances]"]`);
+    allowanceInputs.forEach(input => {
+        const name = input.name;
+        const allowanceMatch = name.match(/\[allowances\]\[(.+?)\]/);
+        if (allowanceMatch) {
+            allowanceData[allowanceMatch[1]] = input.value || '0';
+        }
+    });
+
+    // Get payment values
+    const sourceAmount = sourceRow.querySelector(`input[name="rows[${rowNum}][amount]"]`)?.value || '';
+    const sourceExpenses = sourceRow.querySelector(`input[name="rows[${rowNum}][expenses]"]`)?.value || '';
+    const sourceHoldFor8Weeks = sourceRow.querySelector(`input[name="rows[${rowNum}][hold_for_8_weeks]"]`)?.value || '';
+    const sourceNetAmount = sourceRow.querySelector(`input[name="rows[${rowNum}][net_amount]"]`)?.value || '';
+
+    // Add a new row
+    const tbody = document.getElementById('promoterRows');
+    const existingRows = tbody.querySelectorAll('tr');
+    const nextRowNumber = existingRows.length + 1;
+
+    // Generate attendance inputs based on current dates
+    let attendanceInputsHTML = '';
+    const numDates = currentAttendanceDates ? currentAttendanceDates.length : 0;
+    if (currentAttendanceDates && currentAttendanceDates.length > 0) {
+        attendanceInputsHTML = currentAttendanceDates.map(date =>
+            `<input type="number" class="table-input-small" name="rows[${nextRowNumber}][attendance][${date}]" min="0" max="1" step="1" value="${attendanceData[date] || '0'}" onchange="calculateRowTotal(${nextRowNumber})" placeholder="0/1">`
+        ).join('');
+    }
+
+    const attendanceWidth = numDates * 80 + 160;
+
+    // Create the new row with duplicated data
+    const newRow = document.createElement('tr');
+    newRow.innerHTML = `
+        <td style="text-align: center; font-weight: bold;">${nextRowNumber}</td>
+        <td>
+            <input type="text" class="table-input" name="rows[${nextRowNumber}][location]" value="${sourceLocation}" placeholder="Location">
+        </td>
+        <td>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; position: relative;">
+                <div style="position: relative;">
+                    <input type="text" class="table-input-small" name="rows[${nextRowNumber}][promoter_search]" value="${sourcePromoterSearch}" placeholder="Search promoter by name/ID" oninput="handlePromoterSearchInput(${nextRowNumber}, this)" onfocus="showAllPromoters(${nextRowNumber}, this)" onblur="hidePromoterSuggestions(${nextRowNumber})">
+                    <div id="promoterSuggestions-${nextRowNumber}" class="promoter-suggestions" style="display:none"></div>
+                    <select class="table-input-small" name="rows[${nextRowNumber}][promoter_id]" onchange="updatePromoterDetails(${nextRowNumber}, this)" style="display:none">
+                        <option value="">Select</option>
+                        ${sourcePromoterId ? `<option value="${sourcePromoterId}" selected>${sourcePromoterSearch.split(' - ')[0] || ''}</option>` : ''}
+                    </select>
+                </div>
+                <input type="text" class="table-input-small table-input-readonly promoter-tooltip" name="rows[${nextRowNumber}][promoter_name]" readonly value="${sourcePromoterName}" data-tooltip="">
+                <select class="table-input-small" name="rows[${nextRowNumber}][position_id]" id="positionSelect-${nextRowNumber}" onchange="updatePositionFromDropdown(${nextRowNumber}, this)">
+                    <option value="">Select Position</option>
+                </select>
+                <input type="hidden" name="rows[${nextRowNumber}][position]" id="positionName-${nextRowNumber}" value="${sourcePositionName}">
+            </div>
+        </td>
+        <td>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                <input type="text" class="table-input-small table-input-readonly" name="rows[${nextRowNumber}][bank_name]" readonly placeholder="Bank Name" value="${sourceBankName}">
+                <input type="text" class="table-input-small table-input-readonly" name="rows[${nextRowNumber}][bank_branch]" readonly placeholder="Bank Branch" value="${sourceBankBranch}">
+                <input type="text" class="table-input-small table-input-readonly" name="rows[${nextRowNumber}][bank_account_number]" readonly placeholder="Bank Number" value="${sourceBankAccount}">
+            </div>
+        </td>
+        <td id="attendanceCell-${nextRowNumber}" style="display: table-cell; width: ${attendanceWidth}px;">
+            <div style="display: grid; grid-template-columns: repeat(${numDates}, 1fr) 1fr 1.5fr; gap: 0.75rem; width: ${attendanceWidth}px;">
+                ${attendanceInputsHTML}
+                <input type="number" class="table-input-small calculated-cell" name="rows[${nextRowNumber}][attendance_total]" value="${sourceAttendanceTotal}" readonly>
+                <input type="number" step="0.01" class="table-input-small" name="rows[${nextRowNumber}][attendance_amount]" value="${sourceAttendanceAmount}" title="Attendance Amount (Auto-calculated, but editable)" oninput="calculateNetAmount(${nextRowNumber})">
+            </div>
+        </td>
+        <td id="paymentCell-${nextRowNumber}">
+            ${generatePaymentRowHTML(nextRowNumber, getCurrentJobAllowances(), {
+                amount: sourceAmount,
+                expenses: sourceExpenses,
+                hold_for_8_weeks: sourceHoldFor8Weeks,
+                net_amount: sourceNetAmount,
+                ...allowanceData
+            })}
+        </td>
+        <td>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; position: relative;">
+                <div style="position: relative;">
+                    <input type="text" class="table-input-small" name="rows[${nextRowNumber}][coordinator_search]" value="${sourceCoordinatorSearch}" placeholder="Search coordinator by name/ID" oninput="handleCoordinatorSearchInput(${nextRowNumber}, this)" onfocus="showAllCoordinators(${nextRowNumber}, this)" onblur="hideCoordinatorSuggestions(${nextRowNumber})">
+                    <div id="coordinatorSuggestions-${nextRowNumber}" class="coordinator-suggestions" style="display:none"></div>
+                    <select class="table-input-small" name="rows[${nextRowNumber}][coordinator_id]" onchange="updateCoordinatorDisplay(${nextRowNumber}, this)" style="display:none">
+                        <option value="">Select</option>
+                        ${sourceCoordinatorId ? `<option value="${sourceCoordinatorId}" selected>${sourceCoordinatorSearch.split(' - ')[0] || ''}</option>` : ''}
+                    </select>
+                </div>
+                <input type="text" class="table-input-small table-input-readonly" name="rows[${nextRowNumber}][current_coordinator]" readonly value="${sourceCoordinatorName}">
+                <input type="number" step="0.01" class="table-input-small" name="rows[${nextRowNumber}][coordination_fee]" value="${sourceCoordinationFee}" title="Coordination Fee (Auto-calculated, but editable)" oninput="markAsCustom(this, 'coordination_fee'); calculateRowNet(${nextRowNumber})" placeholder="0.00">
+            </div>
+        </td>
+        <td>
+            <div style="display: flex; gap: 0.25rem; justify-content: center;">
+                <button type="button" class="btn-duplicate" onclick="duplicateRow(${nextRowNumber})" title="Duplicate this promoter">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                </button>
+                <button type="button" class="btn-danger" onclick="removeRow(${nextRowNumber})" title="Remove this row">×</button>
+            </div>
+        </td>
+    `;
+
+    tbody.appendChild(newRow);
+
+    // Update row counter
+    rowCounter = nextRowNumber;
+
+    // Populate position dropdown and set the position
+    setTimeout(() => {
+        populatePositionDropdown(nextRowNumber);
+        if (sourcePositionId) {
+            setTimeout(() => {
+                const positionSelect = document.getElementById(`positionSelect-${nextRowNumber}`);
+                if (positionSelect) {
+                    positionSelect.value = sourcePositionId;
+                    updatePositionFromDropdown(nextRowNumber, positionSelect);
+                }
+            }, 150);
+        }
+
+        // Update promoter tooltip if promoter is selected
+        if (sourcePromoterId) {
+            const promoterSelect = newRow.querySelector(`select[name="rows[${nextRowNumber}][promoter_id]"]`);
+            if (promoterSelect && promoterSelect.value) {
+                updatePromoterDetails(nextRowNumber, promoterSelect);
+            }
+        }
+
+        // Update coordinator display if coordinator is selected
+        if (sourceCoordinatorId) {
+            const coordinatorSelect = newRow.querySelector(`select[name="rows[${nextRowNumber}][coordinator_id]"]`);
+            if (coordinatorSelect && coordinatorSelect.value) {
+                updateCoordinatorDisplay(nextRowNumber, coordinatorSelect);
+            }
+        }
+
+        // Recalculate totals
+        calculateRowTotal(nextRowNumber);
+        calculateRowNet(nextRowNumber);
+        calculateGrandTotal();
+    }, 200);
+
+    // Scroll to the new row
+    newRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    
+    // Highlight the new row briefly
+    const originalBg = newRow.style.backgroundColor;
+    newRow.style.transition = 'background-color 0.6s ease';
+    newRow.style.backgroundColor = '#dbeafe';
+    setTimeout(() => {
+        newRow.style.backgroundColor = originalBg || '';
+    }, 1200);
+
+    Swal.fire({
+        icon: 'success',
+        title: 'Row Duplicated',
+        text: 'Promoter row has been duplicated. You can now change the position if needed.',
+        timer: 2000,
+        showConfirmButton: false
+    });
+}
+
 function removeRow(rowNum) {
     Swal.fire({
         title: 'Delete Promoter Row',
@@ -4049,6 +4230,17 @@ function removeRow(rowNum) {
     });
 }
 
+// Load existing salary sheet rows from passed data (used when editing)
+function loadExistingSalarySheetsFromData(sheets) {
+    clearAllRows();
+    if (sheets && sheets.length > 0) {
+        sheets.forEach(function(sheet, index) {
+            loadSalarySheetAsRow(sheet, index);
+        });
+    }
+    calculateGrandTotal();
+}
+
 // Function to load existing salary sheet data for a job
 function loadExistingSalarySheets(jobId) {
     if (!jobId) {
@@ -4076,11 +4268,10 @@ function loadExistingSalarySheets(jobId) {
             const allDates = new Set();
 
             // Add dates from job date range (if available)
-            const jobSelect = document.getElementById('job_id');
-            const selectedOption = jobSelect.options[jobSelect.selectedIndex];
-            if (selectedOption) {
-                const startDate = selectedOption.getAttribute('data-start-date');
-                const endDate = selectedOption.getAttribute('data-end-date');
+            const jobHiddenEl = document.getElementById('job_id');
+            if (jobHiddenEl && jobHiddenEl.value) {
+                const startDate = jobHiddenEl.getAttribute('data-start-date');
+                const endDate = jobHiddenEl.getAttribute('data-end-date');
                 if (startDate && endDate) {
                     const jobDates = generateDateRange(startDate, endDate);
                     jobDates.forEach(date => allDates.add(date));
@@ -4136,6 +4327,8 @@ function loadExistingSalarySheets(jobId) {
                         // Transform item data to match expected structure
                         const rowData = {
                             promoter_id: item.attendance_data?.promoter_id || item.promoter_id,
+                            position_id: item.position_id || null, // Include saved position_id
+                            position_name: item.position?.position_name || item.attendance_data?.position || null,
                             current_coordinator_id: item.coordinator_details ?
                                 (() => {
                                     // Find coordinator by coordinator_id
@@ -4161,6 +4354,19 @@ function loadExistingSalarySheets(jobId) {
                     rowIndex++;
                 }
             });
+
+            // Recalculate allowances for rows with multiply_by_attendance enabled
+            setTimeout(() => {
+                const rows = document.querySelectorAll('#promoterRows tr');
+                rows.forEach((row, idx) => {
+                    const rowNum = idx + 1;
+                    const attendanceTotalInput = row.querySelector(`input[name="rows[${rowNum}][attendance_total]"]`);
+                    if (attendanceTotalInput) {
+                        const presentDays = parseFloat(attendanceTotalInput.value) || 0;
+                        calculateAllowances(rowNum, presentDays);
+                    }
+                });
+            }, 100);
 
             // Update grand total
             calculateGrandTotal();
@@ -4191,9 +4397,14 @@ function loadSalarySheetAsRow(sheet, index) {
     const row = document.createElement('tr');
 
     // Get promoter data
-    const promoter = promoters.find(p => p.id == sheet.promoter_id);
-    const promoterName = promoter ? promoter.promoter_name : 'Unknown';
-    const positionName = promoter && promoter.position ? promoter.position.position_name : 'No Position';
+    const promoterId = sheet.promoter_id || sheet.attendance_data?.promoter_id;
+    const promoter = promoters.find(p => p.id == promoterId);
+    const promoterName = promoter ? promoter.promoter_name : (sheet.attendance_data?.promoter_name || 'Unknown');
+
+    // Get position from saved data (item.position_id) or fallback to promoter's position
+    const savedPositionId = sheet.position_id || (promoter && promoter.position_id ? promoter.position_id : null);
+    const positionName = sheet.position_name || sheet.attendance_data?.position || (promoter && promoter.position ? promoter.position.position_name : 'No Position');
+
     const bankName = promoter ? (promoter.bank_name || '') : '';
     const bankBranch = promoter ? (promoter.bank_branch_name || '') : '';
     const bankAccount = promoter ? (promoter.bank_account_number || '') : '';
@@ -4234,7 +4445,7 @@ function loadSalarySheetAsRow(sheet, index) {
         <td>
             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; position: relative;">
                 <div style="position: relative;">
-                    <input type="text" class="table-input-small" name="rows[${index}][promoter_search]" placeholder="Search promoter by name/ID" value="${promoter ? promoter.promoter_id + ' - ' + promoter.promoter_name : ''}" oninput="handlePromoterSearchInput(${index}, this)" onfocus="showAllPromoters(${index}, this)" onblur="hidePromoterSuggestions(${index})">
+                    <input type="text" class="table-input-small" name="rows[${index}][promoter_search]" placeholder="Search promoter by name/ID" value="${promoter ? promoter.promoter_id + ' - ' + promoter.promoter_name : (promoterName !== 'Unknown' ? promoterName : '')}" oninput="handlePromoterSearchInput(${index}, this)" onfocus="showAllPromoters(${index}, this)" onblur="hidePromoterSuggestions(${index})">
                     <div id="promoterSuggestions-${index}" class="promoter-suggestions" style="display:none"></div>
                     <select class="table-input-small" name="rows[${index}][promoter_id]" onchange="updatePromoterDetails(${index}, this)" style="display:none">
                         <option value="">Select</option>
@@ -4247,11 +4458,14 @@ function loadSalarySheetAsRow(sheet, index) {
                                 data-branch="${promoter.bank_branch_name || ''}"
                                 data-account="${promoter.bank_account_number || ''}"
                                 data-status="${promoter.status || 'inactive'}"
-                                data-position-id="${promoter.position_id || ''}">${promoter.promoter_id}</option>` : ''}
+                                data-position-id="${savedPositionId || promoter.position_id || ''}">${promoter.promoter_id}</option>` : ''}
                     </select>
                 </div>
                 <input type="text" class="table-input-small table-input-readonly promoter-tooltip" name="rows[${index}][promoter_name]" readonly value="${promoterName}" data-tooltip="">
-                <input type="text" class="table-input-small table-input-readonly" name="rows[${index}][position]" readonly value="${positionName}">
+                <select class="table-input-small" name="rows[${index}][position_id]" id="positionSelect-${index}" onchange="updatePositionFromDropdown(${index}, this)">
+                    <option value="">Select Position</option>
+                </select>
+                <input type="hidden" name="rows[${index}][position]" id="positionName-${index}" value="${positionName}">
             </div>
         </td>
         <td>
@@ -4291,11 +4505,33 @@ function loadSalarySheetAsRow(sheet, index) {
             </div>
         </td>
         <td>
-            <button type="button" class="btn-danger" onclick="removeRow(${index})">×</button>
+            <div style="display: flex; gap: 0.25rem; justify-content: center;">
+                <button type="button" class="btn-duplicate" onclick="duplicateRow(${index})" title="Duplicate this promoter">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                </button>
+                <button type="button" class="btn-danger" onclick="removeRow(${index})" title="Remove this row">×</button>
+            </div>
         </td>
     `;
 
     tbody.appendChild(row);
+
+    // Populate position dropdown after row is created
+    setTimeout(() => {
+        populatePositionDropdown(index);
+        // Try to set position from saved data or promoter
+        const positionSelect = document.getElementById(`positionSelect-${index}`);
+        if (positionSelect && savedPositionId) {
+            // Wait a bit for dropdown to be populated
+            setTimeout(() => {
+                positionSelect.value = savedPositionId;
+                updatePositionFromDropdown(index, positionSelect);
+            }, 150);
+        }
+    }, 200);
 
     // Update tooltip for promoter name
     if (promoter) {
@@ -4323,14 +4559,58 @@ function saveSalarySheet() {
     openSalarySheetSaveModal();
 }
 
-// Add first row automatically
+// Add first row automatically, or load existing rows when editing
 document.addEventListener('DOMContentLoaded', function() {
-    addPromoterRow();
-    generateSheetNumber();
+    if (isEditMode && jobSalarySheetsData && jobSalarySheetsData.length > 0) {
+        const jobHidden = document.getElementById('job_id');
+        const noJobMessage = document.getElementById('noJobMessage');
+        const salaryTableContainer = document.getElementById('salaryTableContainer');
+        const addPromoterBtn = document.getElementById('addPromoterBtn');
+        const salaryRuleBtn = document.getElementById('salaryRuleBtn');
+        const allowanceRuleBtn = document.getElementById('allowanceRuleBtn');
+        const attendanceLegend = document.getElementById('attendanceLegend');
+        if (jobHidden && jobHidden.value) {
+            const start = jobHidden.getAttribute('data-start-date');
+            const end = jobHidden.getAttribute('data-end-date');
+            if (start && end) {
+                currentAttendanceDates = generateDateRange(start, end);
+                updateAttendanceHeaders(currentAttendanceDates);
+            }
+            loadPositionSalaryRules().then(() => {
+                loadExistingSalarySheetsFromData(jobSalarySheetsData);
+                const rows = document.querySelectorAll('#promoterRows tr');
+                rows.forEach((row, idx) => { if (typeof populatePositionDropdown === 'function') populatePositionDropdown(idx + 1); });
+                if (typeof updatePaymentHeaders === 'function') updatePaymentHeaders(getCurrentJobAllowances());
+                calculateGrandTotal();
+            });
+        }
+        if (noJobMessage) noJobMessage.style.display = 'none';
+        if (salaryTableContainer) salaryTableContainer.style.display = 'block';
+        if (attendanceLegend) attendanceLegend.style.display = (currentAttendanceDates && currentAttendanceDates.length) ? 'block' : 'none';
+        if (addPromoterBtn) addPromoterBtn.disabled = false;
+                const bulkBtn = document.getElementById('bulkAddRowsBtn'); if (bulkBtn) bulkBtn.disabled = false;
+        if (salaryRuleBtn) salaryRuleBtn.disabled = false;
+        if (allowanceRuleBtn) allowanceRuleBtn.disabled = false;
+        setTimeout(function() { if (typeof initializeHorizontalScroll === 'function') initializeHorizontalScroll(); }, 100);
+    } else {
+        // Try to restore a previously selected job from sessionStorage (e.g. after page refresh).
+        // scRestoreJob() is deferred to here so that all `let` variables are initialized (no TDZ).
+        const restoredFromSession = scRestoreJob();
+        if (restoredFromSession) {
+            // Job was restored — trigger updateAttendanceDates to show picker / table
+            updateAttendanceDates();
+        } else {
+            // Fresh create page — set up a blank row and generate a sheet number
+            addPromoterRow();
+            generateSheetNumber();
+        }
+    }
 
     // Add event listeners for allowance modal
-    document.getElementById('addAllowanceRowBtn').addEventListener('click', addAllowanceRow);
-    document.getElementById('allowanceRuleCloseBtn').addEventListener('click', closeAllowanceRuleModal);
+    const addAllowanceRowBtn = document.getElementById('addAllowanceRowBtn');
+    const allowanceRuleCloseBtn = document.getElementById('allowanceRuleCloseBtn');
+    if (addAllowanceRowBtn) addAllowanceRowBtn.addEventListener('click', addAllowanceRow);
+    if (allowanceRuleCloseBtn) allowanceRuleCloseBtn.addEventListener('click', closeAllowanceRuleModal);
 
     // Handle modal background click to close
     document.addEventListener('click', function(e) {
@@ -4431,10 +4711,8 @@ function updateFormFields(jsonData) {
     }
 
     if (jsonData.status) {
-        const statusSelect = document.querySelector('select[name="status"]');
-        if (statusSelect) {
-            statusSelect.value = jsonData.status;
-        }
+        const _sLabels = {draft:'Draft',complete:'Complete',reject:'Reject',approve:'Approve',paid:'Paid'};
+        selectStatusOption(jsonData.status, _sLabels[jsonData.status] || jsonData.status);
     }
 
     if (jsonData.location) {
@@ -4492,6 +4770,16 @@ function updateTableRows(jsonData) {
     // Update grand total after all rows are processed and calculations are done
     setTimeout(() => {
         console.log('Updating grand total after all rows processed...');
+        // Recalculate allowances for rows with multiply_by_attendance enabled
+        const rows = document.querySelectorAll('#promoterRows tr');
+        rows.forEach((row, idx) => {
+            const rowNum = idx + 1;
+            const attendanceTotalInput = row.querySelector(`input[name="rows[${rowNum}][attendance_total]"]`);
+            if (attendanceTotalInput) {
+                const presentDays = parseFloat(attendanceTotalInput.value) || 0;
+                calculateAllowances(rowNum, presentDays);
+            }
+        });
         calculateGrandTotal();
         updatePromoterDropdowns(); // Update dropdowns after all rows are added
         console.log('Grand total updated after pulling data');
@@ -4549,7 +4837,10 @@ function addPromoterRowFromJson(rowData, index) {
                     </select>
                 </div>
                 <input type="text" class="table-input-small table-input-readonly promoter-tooltip" name="rows[${index + 1}][promoter_name]" readonly data-tooltip="" value="${rowData.promoter_name || ''}">
-                <input type="text" class="table-input-small table-input-readonly" name="rows[${index + 1}][position]" readonly value="${rowData.position || ''}">
+                <select class="table-input-small" name="rows[${index + 1}][position_id]" id="positionSelect-${index + 1}" onchange="updatePositionFromDropdown(${index + 1}, this)">
+                    <option value="">Select Position</option>
+                </select>
+                <input type="hidden" name="rows[${index + 1}][position]" id="positionName-${index + 1}" value="${rowData.position || ''}">
             </div>
         </td>
         <td>
@@ -4593,7 +4884,15 @@ function addPromoterRowFromJson(rowData, index) {
             </div>
         </td>
         <td>
-            <button type="button" class="btn-danger" onclick="removeRow(${index + 1})">×</button>
+            <div style="display: flex; gap: 0.25rem; justify-content: center;">
+                <button type="button" class="btn-duplicate" onclick="duplicateRow(${index + 1})" title="Duplicate this promoter">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                </button>
+                <button type="button" class="btn-danger" onclick="removeRow(${index + 1})" title="Remove this row">×</button>
+            </div>
         </td>
     `;
 
@@ -4605,6 +4904,39 @@ function addPromoterRowFromJson(rowData, index) {
         if (promoterSelect && promoterSelect.value) {
             updatePromoterDetails(index + 1, promoterSelect);
         }
+
+        // Populate position dropdown after row is created
+        setTimeout(() => {
+            populatePositionDropdown(index + 1);
+            // Try to set position from rowData or promoter
+            const positionSelect = document.getElementById(`positionSelect-${index + 1}`);
+            if (positionSelect) {
+                let positionId = null;
+                // First priority: use saved position_id from rowData
+                if (rowData.position_id) {
+                    positionId = rowData.position_id;
+                } else if (rowData.promoter_id) {
+                    // Fallback to promoter's position_id
+                    const promoter = promoters.find(p => p.id == rowData.promoter_id);
+                    if (promoter && promoter.position_id) {
+                        positionId = promoter.position_id;
+                    }
+                }
+                if (positionId) {
+                    // Wait a bit for dropdown to be populated
+                    setTimeout(() => {
+                        positionSelect.value = positionId;
+                        updatePositionFromDropdown(index + 1, positionSelect);
+                    }, 100);
+                } else if (rowData.position) {
+                    // If we have position name but not ID, try to find it
+                    const positionNameInput = document.getElementById(`positionName-${index + 1}`);
+                    if (positionNameInput) {
+                        positionNameInput.value = rowData.position;
+                    }
+                }
+            }
+        }, 200);
 
         const coordinatorSelect = row.querySelector(`select[name="rows[${index + 1}][coordinator_id]"]`);
         if (coordinatorSelect && coordinatorSelect.value) {
@@ -4646,7 +4978,7 @@ function addPromoterRowFromJson(rowData, index) {
         calculateRowNet(index + 1);
     }, 100);
 
-    // Update promoter dropdowns to hide already selected promoters
+    // Update promoter dropdowns (duplicates now allowed)
     updatePromoterDropdowns();
 
     console.log(`Row ${index + 1} added successfully`);
@@ -4805,6 +5137,46 @@ function reloadModalContent() {
     loadExistingRules();
 }
 
+// ── Bulk Add Rows ──────────────────────────────────────────────────────────────
+function openBulkAddModal() {
+    document.getElementById('bulkRowCount').value = 5;
+    document.getElementById('bulkAddError').style.display = 'none';
+    document.getElementById('bulkAddRowsModal').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => document.getElementById('bulkRowCount').select(), 50);
+}
+
+function closeBulkAddModal() {
+    document.getElementById('bulkAddRowsModal').style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+function confirmBulkAdd() {
+    const input = document.getElementById('bulkRowCount');
+    const count = parseInt(input.value, 10);
+    const errorEl = document.getElementById('bulkAddError');
+
+    if (!count || count < 1 || count > 100) {
+        errorEl.textContent = 'Please enter a number between 1 and 100.';
+        errorEl.style.display = 'block';
+        input.focus();
+        return;
+    }
+
+    errorEl.style.display = 'none';
+    closeBulkAddModal();
+
+    for (let i = 0; i < count; i++) {
+        addPromoterRow();
+    }
+}
+
+// Close bulk add modal when clicking the backdrop
+document.addEventListener('click', function(e) {
+    if (e.target.id === 'bulkAddRowsModal') closeBulkAddModal();
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 function openSalaryRuleModal() {
     const selectedJobId = document.getElementById('job_id').value;
     if (!selectedJobId) {
@@ -5231,6 +5603,18 @@ document.addEventListener('keydown', function(e) {
         if (modal && modal.style.display === 'block') {
             closeSalaryRuleModal();
         }
+        const bulkModal = document.getElementById('bulkAddRowsModal');
+        if (bulkModal && bulkModal.style.display === 'block') {
+            closeBulkAddModal();
+        }
+    }
+    // Confirm bulk add with Enter when modal is open
+    if (e.key === 'Enter') {
+        const bulkModal = document.getElementById('bulkAddRowsModal');
+        if (bulkModal && bulkModal.style.display === 'block') {
+            e.preventDefault();
+            confirmBulkAdd();
+        }
     }
 });
 
@@ -5286,8 +5670,19 @@ function saveSalaryRules() {
                 text: data.message,
                 confirmButtonText: 'OK'
             });
-            // Reload modal content instead of closing
+            // Reload modal content then refresh position dropdowns in all rows
             reloadModalContent();
+            loadPositionSalaryRules().then(() => {
+                document.querySelectorAll('select[id^="positionSelect-"]').forEach(sel => {
+                    const rowNum = parseInt(sel.id.replace('positionSelect-', ''));
+                    const previousValue = sel.value;
+                    populatePositionDropdown(rowNum);
+                    // Restore the previously selected position if it still exists in the new list
+                    if (previousValue && sel.querySelector(`option[value="${previousValue}"]`)) {
+                        sel.value = previousValue;
+                    }
+                });
+            });
         } else {
             Swal.fire({
                 icon: 'error',
@@ -5739,13 +6134,7 @@ document.addEventListener('click', function(e) {
         document.addEventListener('DOMContentLoaded', function() {
             initializeHorizontalScroll();
 
-            // Initialize Select2 for job dropdown
-            $('#job_id').select2({
-                placeholder: 'Select Job',
-                allowClear: true,
-                width: '100%',
-                dropdownParent: $('body') // Ensure dropdown appears above other elements
-            });
+            // Job field uses custom AJAX search — no Select2 needed
         });
 
         // Debug function to manually check expenses calculation
@@ -5967,11 +6356,9 @@ function confirmSaveSalarySheet() {
     // Add hidden inputs to the form
     const form = document.getElementById('salarySheetForm');
 
-    // Update the existing status dropdown value instead of creating a hidden input
-    const statusSelect = form.querySelector('select[name="status"]');
-    if (statusSelect) {
-        statusSelect.value = salarySheetStatus;
-    }
+    // Update the hidden status input and the visible button label
+    const _sLabels2 = {draft:'Draft',complete:'Complete',reject:'Reject',approve:'Approve',paid:'Paid'};
+    selectStatusOption(salarySheetStatus, _sLabels2[salarySheetStatus] || salarySheetStatus);
 
     // Remove existing hidden inputs if they exist
     const existingJobStatus = form.querySelector('input[name="job_status"]');
@@ -6054,10 +6441,9 @@ document.addEventListener('DOMContentLoaded', function() {
 // Add Custom Date Modal Functions
 function openAddCustomDateModal() {
     const modal = document.getElementById('addCustomDateModal');
-    const jobSelect = document.getElementById('job_id');
-    const selectedOption = jobSelect.options[jobSelect.selectedIndex];
+    const jobHiddenInput = document.getElementById('job_id');
 
-    if (!selectedOption.value) {
+    if (!jobHiddenInput || !jobHiddenInput.value) {
         Swal.fire({
             icon: 'warning',
             title: 'No Job Selected',
@@ -6067,7 +6453,7 @@ function openAddCustomDateModal() {
     }
 
     // Check if end date exists - custom dates can only be added when end date is null
-    const endDate = selectedOption.getAttribute('data-end-date');
+    const endDate = jobHiddenInput.getAttribute('data-end-date');
     const hasEndDate = endDate && endDate !== 'null' && endDate !== '';
 
     if (hasEndDate) {

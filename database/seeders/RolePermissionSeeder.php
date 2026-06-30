@@ -253,6 +253,18 @@ class RolePermissionSeeder extends Seeder
             'view dashboard',
         ]);
 
+        $clientServiceRole = Role::firstOrCreate(['name' => 'client service']);
+        $clientServiceRole->syncPermissions([
+            'view dashboard',
+            'access admin panel',
+            'view jobs',
+            'view salary sheets',
+            'create salary sheets',
+            'edit salary sheets',
+            'print salary sheets',
+            'export salary sheets',
+        ]);
+
         // Create admin user
         $adminUser = User::firstOrCreate(
             ['email' => 'admin@mindpark.com'],

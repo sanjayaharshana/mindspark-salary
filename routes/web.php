@@ -62,7 +62,8 @@ Route::middleware('auth')->group(function () {
     // Brand Management routes
     Route::resource('admin/clients', ClientController::class)->names('admin.clients');
 
-    // Job Management routes
+    // Job Management routes — ajax/search MUST come before the resource to avoid {job} catching it
+    Route::get('admin/jobs/ajax/search', [JobController::class, 'ajaxSearch'])->name('admin.jobs.ajax.search');
     Route::resource('admin/jobs', JobController::class)->names('admin.jobs');
     Route::post('admin/jobs/{job}/update-settings', [JobController::class, 'updateSettings'])->name('admin.jobs.update-settings');
     Route::post('admin/jobs/{job}/update-allowance-rules', [JobController::class, 'updateAllowanceRules'])->name('admin.jobs.update-allowance-rules');
@@ -84,6 +85,7 @@ Route::middleware('auth')->group(function () {
     // Salary Sheet Management routes
     // Custom routes must be defined before resource route to avoid conflicts
     Route::get('admin/salary-sheets/by-job/{jobId}', [SalarySheetController::class, 'getByJob'])->name('admin.salary-sheets.by-job');
+    Route::post('admin/salary-sheets/{salarySheet}/duplicate', [SalarySheetController::class, 'duplicate'])->name('admin.salary-sheets.duplicate');
     Route::get('admin/salary-sheets/{salarySheet}/print', [SalarySheetController::class, 'print'])->name('admin.salary-sheets.print');
     Route::get('admin/salary-sheets/{salarySheet}/export', [SalarySheetController::class, 'export'])->name('admin.salary-sheets.export');
     Route::post('admin/salary-sheets/{salarySheet}/approve', [SalarySheetController::class, 'approve'])->name('admin.salary-sheets.approve');

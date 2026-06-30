@@ -7,220 +7,163 @@
     <span class="breadcrumb-separator">›</span>
     <a href="{{ route('admin.jobs.index') }}" class="breadcrumb-item">Jobs</a>
     <span class="breadcrumb-separator">›</span>
+    <a href="{{ route('admin.jobs.show', $job) }}" class="breadcrumb-item">{{ $job->job_number }}</a>
+    <span class="breadcrumb-separator">›</span>
     <span class="breadcrumb-item active">Edit</span>
 @endsection
 
 @section('content')
-<div class="card">
-    <div class="card-header">
-        <h3>Edit Job Information</h3>
-        <p style="color: #6b7280; margin-top: 0.5rem;">Current Job Number: <strong>{{ $job->job_number }}</strong></p>
-    </div>
-    <div class="card-body">
-        <form action="{{ route('admin.jobs.update', $job) }}" method="POST">
-            @csrf
-            @method('PUT')
-            
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
-                <div class="form-group">
-                    <label for="job_name" class="form-label">Job Name *</label>
-                    <input type="text" class="form-control @error('job_name') is-invalid @enderror" 
-                           id="job_name" name="job_name" value="{{ old('job_name', $job->job_name) }}" required>
-                    @error('job_name')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
+@include('admin.jobs._form-styles')
+
+<form action="{{ route('admin.jobs.update', $job) }}" method="POST">
+@csrf
+@method('PUT')
+
+<div class="jf-layout">
+    {{-- Main column --}}
+    <div style="display:flex;flex-direction:column;gap:.75rem;">
+
+        {{-- Job Info card --}}
+        <div class="jf-card">
+            <div class="jf-card-head"><p class="jf-card-title">Job Information</p></div>
+            <div class="jf-card-body">
+                <div class="jf-row">
+                    <div class="jf-group">
+                        <label class="jf-label">Job Name <span class="jf-req">*</span></label>
+                        <input class="jf-input @error('job_name') jf-invalid @enderror" type="text" name="job_name" value="{{ old('job_name', $job->job_name) }}" placeholder="Enter job name" required>
+                        @error('job_name')<div class="jf-error">{{ $message }}</div>@enderror
+                    </div>
+                    <div class="jf-group">
+                        <label class="jf-label">Client <span class="jf-req">*</span></label>
+                        <select class="jf-input @error('client_id') jf-invalid @enderror" name="client_id" id="client_id" required>
+                            <option value="">Select a client</option>
+                            @foreach($clients as $client)
+                                <option value="{{ $client->id }}" data-code="{{ $client->short_code }}" {{ old('client_id', $job->client_id) == $client->id ? 'selected' : '' }}>
+                                    {{ $client->name }} ({{ $client->short_code }})
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('client_id')<div class="jf-error">{{ $message }}</div>@enderror
+                    </div>
                 </div>
-
-                <div class="form-group">
-                    <label for="client_id" class="form-label">Client *</label>
-                    <select class="form-control @error('client_id') is-invalid @enderror" 
-                            id="client_id" name="client_id" required>
-                        <option value="">Select Client</option>
-                        @foreach($clients as $client)
-                            <option value="{{ $client->id }}" {{ old('client_id', $job->client_id) == $client->id ? 'selected' : '' }}>
-                                {{ $client->name }} ({{ $client->short_code }})
-                            </option>
-                        @endforeach
-                    </select>
-                    @error('client_id')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                </div>
-            </div>
-
-            <div class="form-group" style="margin-bottom: 1.5rem;">
-                <label for="description" class="form-label">Description</label>
-                <textarea class="form-control @error('description') is-invalid @enderror" 
-                          id="description" name="description" rows="4" placeholder="Describe the job details...">{{ old('description', $job->description) }}</textarea>
-                @error('description')
-                    <div class="invalid-feedback">{{ $message }}</div>
-                @enderror
-            </div>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
-                <div class="form-group">
-                    <label for="officer_id" class="form-label">Officer</label>
-                    <select class="form-control @error('officer_id') is-invalid @enderror" 
-                            id="officer_id" name="officer_id">
-                        <option value="">Select Officer</option>
-                        @foreach($officers as $officer)
-                            <option value="{{ $officer->id }}" {{ old('officer_id', $job->officer_id) == $officer->id ? 'selected' : '' }}>
-                                {{ $officer->name }} ({{ $officer->email }})
-                            </option>
-                        @endforeach
-                    </select>
-                    @error('officer_id')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                </div>
-
-                <div class="form-group">
-                    <label for="reporter_id" class="form-label">Reporter</label>
-                    <select class="form-control @error('reporter_id') is-invalid @enderror" 
-                            id="reporter_id" name="reporter_id">
-                        <option value="">Select Reporter</option>
-                        @foreach($reporters as $reporter)
-                            <option value="{{ $reporter->id }}" {{ old('reporter_id', $job->reporter_id) == $reporter->id ? 'selected' : '' }}>
-                                {{ $reporter->name }} ({{ $reporter->email }})
-                            </option>
-                        @endforeach
-                    </select>
-                    @error('reporter_id')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
+                <div class="jf-group">
+                    <label class="jf-label">Description</label>
+                    <textarea class="jf-input jf-textarea @error('description') jf-invalid @enderror" name="description" rows="4" placeholder="Describe the job details…">{{ old('description', $job->description) }}</textarea>
+                    @error('description')<div class="jf-error">{{ $message }}</div>@enderror
                 </div>
             </div>
+        </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
-                <div class="form-group">
-                    <label for="status" class="form-label">Status *</label>
-                    <select class="form-control @error('status') is-invalid @enderror" 
-                            id="status" name="status" required>
-                        <option value="">Select Status</option>
-                        <option value="pending" {{ old('status', $job->status) == 'pending' ? 'selected' : '' }}>Pending</option>
-                        <option value="in_progress" {{ old('status', $job->status) == 'in_progress' ? 'selected' : '' }}>In Progress</option>
-                        <option value="completed" {{ old('status', $job->status) == 'completed' ? 'selected' : '' }}>Completed</option>
-                        <option value="cancelled" {{ old('status', $job->status) == 'cancelled' ? 'selected' : '' }}>Cancelled</option>
-                    </select>
-                    @error('status')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                </div>
-
-                <div class="form-group">
-                    <label for="start_date" class="form-label">Start Date</label>
-                    <input type="date" class="form-control @error('start_date') is-invalid @enderror" 
-                           id="start_date" name="start_date" value="{{ old('start_date', $job->start_date?->format('Y-m-d')) }}">
-                    @error('start_date')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                </div>
-
-                <div class="form-group">
-                    <label for="end_date" class="form-label">End Date</label>
-                    <input type="date" class="form-control @error('end_date') is-invalid @enderror" 
-                           id="end_date" name="end_date" value="{{ old('end_date', $job->end_date?->format('Y-m-d')) }}">
-                    @error('end_date')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
+        {{-- Assignment card --}}
+        <div class="jf-card">
+            <div class="jf-card-head"><p class="jf-card-title">Assignment</p></div>
+            <div class="jf-card-body">
+                <div class="jf-row">
+                    <div class="jf-group">
+                        <label class="jf-label">Officer</label>
+                        <select class="jf-input @error('officer_id') jf-invalid @enderror" name="officer_id">
+                            <option value="">Select officer (optional)</option>
+                            @foreach($officers as $officer)
+                                <option value="{{ $officer->id }}" {{ old('officer_id', $job->officer_id) == $officer->id ? 'selected' : '' }}>
+                                    {{ $officer->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('officer_id')<div class="jf-error">{{ $message }}</div>@enderror
+                    </div>
+                    <div class="jf-group">
+                        <label class="jf-label">Reporter</label>
+                        <select class="jf-input @error('reporter_id') jf-invalid @enderror" name="reporter_id">
+                            <option value="">Select reporter (optional)</option>
+                            @foreach($reporters as $reporter)
+                                <option value="{{ $reporter->id }}" {{ old('reporter_id', $job->reporter_id) == $reporter->id ? 'selected' : '' }}>
+                                    {{ $reporter->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('reporter_id')<div class="jf-error">{{ $message }}</div>@enderror
+                    </div>
                 </div>
             </div>
+        </div>
 
-            <div style="display: flex; gap: 1rem; justify-content: flex-end;">
-                <a href="{{ route('admin.jobs.index') }}" class="btn btn-secondary">Cancel</a>
-                <button type="submit" class="btn btn-success">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
-                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-                        <polyline points="17,21 17,13 7,13 7,21"></polyline>
-                        <polyline points="7,3 7,8 15,8"></polyline>
-                    </svg>
+        {{-- Timeline card with save --}}
+        <div class="jf-card">
+            <div class="jf-card-head"><p class="jf-card-title">Timeline &amp; Status</p></div>
+            <div class="jf-card-body">
+                <div class="jf-row">
+                    <div class="jf-group">
+                        <label class="jf-label">Status <span class="jf-req">*</span></label>
+                        <select class="jf-input @error('status') jf-invalid @enderror" name="status" required>
+                            <option value="">Select status</option>
+                            <option value="pending"     {{ old('status', $job->status) == 'pending'     ? 'selected' : '' }}>Pending</option>
+                            <option value="in_progress" {{ old('status', $job->status) == 'in_progress' ? 'selected' : '' }}>In Progress</option>
+                            <option value="completed"   {{ old('status', $job->status) == 'completed'   ? 'selected' : '' }}>Completed</option>
+                            <option value="cancelled"   {{ old('status', $job->status) == 'cancelled'   ? 'selected' : '' }}>Cancelled</option>
+                        </select>
+                        @error('status')<div class="jf-error">{{ $message }}</div>@enderror
+                    </div>
+                    <div class="jf-group">
+                        <label class="jf-label">Start Date</label>
+                        <input class="jf-input @error('start_date') jf-invalid @enderror" type="date" name="start_date" value="{{ old('start_date', $job->start_date?->format('Y-m-d')) }}">
+                        @error('start_date')<div class="jf-error">{{ $message }}</div>@enderror
+                    </div>
+                    <div class="jf-group">
+                        <label class="jf-label">End Date</label>
+                        <input class="jf-input @error('end_date') jf-invalid @enderror" type="date" name="end_date" value="{{ old('end_date', $job->end_date?->format('Y-m-d')) }}">
+                        @error('end_date')<div class="jf-error">{{ $message }}</div>@enderror
+                    </div>
+                </div>
+            </div>
+            <div class="jf-card-foot">
+                <a href="{{ route('admin.jobs.show', $job) }}" class="jf-btn jf-btn-ghost">Cancel</a>
+                <button type="submit" class="jf-btn jf-btn-primary">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
                     Update Job
                 </button>
             </div>
-        </form>
+        </div>
+    </div>
+
+    {{-- Sidebar column --}}
+    <div style="display:flex;flex-direction:column;gap:.75rem;">
+
+        {{-- Current job number card --}}
+        <div class="jf-card">
+            <div class="jf-card-head"><p class="jf-card-title">Current Job Number</p></div>
+            <div class="jf-card-body" style="text-align:center;">
+                <div style="font-family:monospace;font-size:1.1rem;font-weight:700;color:#1f2937;background:#f3f4f6;padding:.5rem .75rem;border-radius:6px;display:inline-block;margin-bottom:.4rem;">
+                    {{ $job->job_number }}
+                </div>
+                <div style="font-size:.72rem;color:#6b7280;">Changing the client will generate a new job number.</div>
+            </div>
+        </div>
+
+        {{-- Status legend card --}}
+        <div class="jf-card">
+            <div class="jf-card-head"><p class="jf-card-title">Status Guide</p></div>
+            <div class="jf-card-body">
+                <div style="display:flex;flex-direction:column;gap:.5rem;">
+                    <div style="display:flex;align-items:center;gap:.5rem;">
+                        <span style="display:inline-flex;padding:.15rem .5rem;border-radius:20px;font-size:.68rem;font-weight:700;background:#fef3c7;color:#92400e;">Pending</span>
+                        <span style="font-size:.78rem;color:#6b7280;">Job is queued, not started</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:.5rem;">
+                        <span style="display:inline-flex;padding:.15rem .5rem;border-radius:20px;font-size:.68rem;font-weight:700;background:#dbeafe;color:#1e40af;">In Progress</span>
+                        <span style="font-size:.78rem;color:#6b7280;">Job is actively running</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:.5rem;">
+                        <span style="display:inline-flex;padding:.15rem .5rem;border-radius:20px;font-size:.68rem;font-weight:700;background:#d1fae5;color:#065f46;">Completed</span>
+                        <span style="font-size:.78rem;color:#6b7280;">Job finished successfully</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:.5rem;">
+                        <span style="display:inline-flex;padding:.15rem .5rem;border-radius:20px;font-size:.68rem;font-weight:700;background:#fee2e2;color:#991b1b;">Cancelled</span>
+                        <span style="font-size:.78rem;color:#6b7280;">Job was abandoned</span>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
-
-<style>
-.form-group {
-    margin-bottom: 1rem;
-}
-
-.form-label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-weight: 600;
-    color: #374151;
-}
-
-.form-control {
-    width: 100%;
-    padding: 0.75rem;
-    border: 1px solid #d1d5db;
-    border-radius: 0.375rem;
-    font-size: 0.875rem;
-    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-}
-
-.form-control:focus {
-    outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.form-control.is-invalid {
-    border-color: #ef4444;
-}
-
-.invalid-feedback {
-    display: block;
-    width: 100%;
-    margin-top: 0.25rem;
-    font-size: 0.875rem;
-    color: #ef4444;
-}
-
-.btn-secondary {
-    background-color: #6b7280;
-    color: white;
-    padding: 0.75rem 1.5rem;
-    border: none;
-    border-radius: 0.375rem;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    font-weight: 500;
-    transition: all 0.2s;
-}
-
-.btn-secondary:hover {
-    background-color: #4b5563;
-    transform: translateY(-1px);
-}
-
-.btn-success {
-    background-color: #10b981;
-    color: white;
-    padding: 0.75rem 1.5rem;
-    border: none;
-    border-radius: 0.375rem;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    font-weight: 500;
-    transition: all 0.2s;
-}
-
-.btn-success:hover {
-    background-color: #059669;
-    transform: translateY(-1px);
-}
-
-@media (max-width: 768px) {
-    div[style*="grid-template-columns"] {
-        grid-template-columns: 1fr !important;
-    }
-}
-</style>
+</form>
 @endsection
-

@@ -29,20 +29,21 @@ class PromoterController extends Controller
         $limit = (int) ($request->get('limit', 10));
         if ($limit <= 0 || $limit > 50) { $limit = 10; }
 
-        if ($q === '') {
-            return response()->json(['data' => []]);
-        }
-
-        $results = Promoter::with('position')
-            ->when(!empty($excludeIds), function ($query) use ($excludeIds) {
-                $query->whereNotIn('id', $excludeIds);
-            })
-            ->where(function($query) use ($q) {
+        // Duplicates are now allowed - don't exclude already selected promoters
+        // $excludeIds is kept for backward compatibility but won't be used for exclusion
+        
+        $query = Promoter::with('position');
+        
+        // Only apply search filter if query is not empty
+        if ($q !== '') {
+            $query->where(function($query) use ($q) {
                 $query->where('promoter_name', 'like', "%{$q}%")
                     ->orWhere('promoter_id', 'like', "%{$q}%")
                     ->orWhere('phone_no', 'like', "%{$q}%");
-            })
-            ->orderBy('promoter_name')
+            });
+        }
+        
+        $results = $query->orderBy('promoter_name')
             ->limit($limit)
             ->get()
             ->map(function($p) {
@@ -119,7 +120,12 @@ class PromoterController extends Controller
         $positions = PromoterPosition::active()->get();
         $statuses = ['active', 'inactive', 'suspended'];
 
-        return view('admin.promoters.index', compact('promoters', 'positions', 'statuses'));
+        $total     = Promoter::count();
+        $active    = Promoter::where('status', 'active')->count();
+        $inactive  = Promoter::where('status', 'inactive')->count();
+        $suspended = Promoter::where('status', 'suspended')->count();
+
+        return view('admin.promoters.index', compact('promoters', 'positions', 'statuses', 'total', 'active', 'inactive', 'suspended'));
     }
 
     /**

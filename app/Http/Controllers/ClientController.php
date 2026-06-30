@@ -20,10 +20,27 @@ class ClientController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $clients = Client::latest()->paginate(10);
-        return view('admin.clients.index', compact('clients'));
+        $query = Client::query();
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('short_code', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('company_name', 'like', "%{$search}%")
+                  ->orWhere('contact_person', 'like', "%{$search}%");
+            });
+        }
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+        $clients = $query->latest()->paginate(15)->withQueryString();
+        $total   = Client::count();
+        $active  = Client::where('status', 'active')->count();
+        $inactive = Client::where('status', '!=', 'active')->count();
+        return view('admin.clients.index', compact('clients', 'total', 'active', 'inactive'));
     }
 
     /**

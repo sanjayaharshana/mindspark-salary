@@ -18,11 +18,20 @@ class OfficerController extends Controller
     /**
      * Display a listing of officer users.
      */
-    public function index()
+    public function index(Request $request)
     {
-        // Get users with officer role
-        $officers = User::role('officer')->with('roles')->paginate(10);
-        return view('admin.officers.index', compact('officers'));
+        $query = User::role('officer')->with('roles');
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('xelenic_id', 'like', "%{$search}%");
+            });
+        }
+        $officers = $query->orderBy('created_at', 'desc')->paginate(15)->withQueryString();
+        $total = User::role('officer')->count();
+        return view('admin.officers.index', compact('officers', 'total'));
     }
 
     /**

@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Salary Sheet Ready for Review</title>
+    <title>Salary Sheet Approved</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -19,7 +19,7 @@
             background-color: #ffffff;
         }
         .email-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
             padding: 2rem;
             text-align: center;
             color: #ffffff;
@@ -33,8 +33,8 @@
             padding: 2rem;
         }
         .info-box {
-            background-color: #f8fafc;
-            border-left: 4px solid #3b82f6;
+            background-color: #f0fdf4;
+            border-left: 4px solid #10b981;
             padding: 1rem;
             margin: 1.5rem 0;
             border-radius: 0.375rem;
@@ -45,7 +45,8 @@
             margin-bottom: 0.5rem;
         }
         .info-box span {
-            color: #6b7280;
+            color: #065f46;
+            font-weight: 600;
         }
         .button-container {
             text-align: center;
@@ -54,7 +55,7 @@
         .button {
             display: inline-block;
             padding: 0.75rem 2rem;
-            background-color: #3b82f6;
+            background-color: #10b981;
             color: #ffffff;
             text-decoration: none;
             border-radius: 0.5rem;
@@ -62,7 +63,7 @@
             transition: background-color 0.2s;
         }
         .button:hover {
-            background-color: #2563eb;
+            background-color: #059669;
         }
         .email-footer {
             background-color: #f9fafb;
@@ -94,13 +95,13 @@
 <body>
     <div class="email-container">
         <div class="email-header">
-            <h1>Salary Sheet Ready for Review</h1>
+            <h1>Salary Sheet Approved</h1>
         </div>
 
         <div class="email-body">
             <p>Hello,</p>
 
-            <p>A new salary sheet has been created and is ready for your review.</p>
+            <p>Your salary sheet has been approved by the reporter.</p>
 
             <div class="info-box">
                 <strong>Sheet Number:</strong>
@@ -113,8 +114,8 @@
                     <td>{{ $salarySheet->job->job_number ?? 'N/A' }}</td>
                 </tr>
                 <tr>
-                    <td>Job Name:</td>
-                    <td>{{ $salarySheet->job->job_name ?? 'N/A' }}</td>
+                    <td>Job Title:</td>
+                    <td>{{ $salarySheet->job->job_title ?? $salarySheet->job->job_name ?? 'N/A' }}</td>
                 </tr>
                 @if($salarySheet->job && $salarySheet->job->client)
                 <tr>
@@ -128,22 +129,28 @@
                 </tr>
                 <tr>
                     <td>Status:</td>
-                    <td><strong style="color: #10b981;">{{ ucfirst($salarySheet->status) }}</strong></td>
+                    <td><strong style="color: #10b981;">Approved</strong></td>
                 </tr>
                 <tr>
-                    <td>Created Date:</td>
-                    <td>{{ $salarySheet->created_at->format('F d, Y') }}</td>
+                    <td>Approved Date:</td>
+                    <td>{{ now()->format('F d, Y') }}</td>
                 </tr>
+                @if($approvedBy)
+                <tr>
+                    <td>Approved By:</td>
+                    <td>{{ $approvedBy->name ?? 'Reporter' }}</td>
+                </tr>
+                @endif
             </table>
 
             <div class="button-container">
                 <a href="{{ route('admin.salary-sheets.show', $salarySheet) }}" class="button">
-                    Review Salary Sheet
+                    View Salary Sheet
                 </a>
             </div>
 
             <p style="color: #6b7280; font-size: 0.875rem; margin-top: 2rem;">
-                Please review the salary sheet and take appropriate action. The salary sheet is currently in "Complete" status and awaiting your approval.
+                The salary sheet has been approved and is now ready for payment processing.
             </p>
         </div>
 
@@ -154,4 +161,5 @@
     </div>
 </body>
 </html>
+
 

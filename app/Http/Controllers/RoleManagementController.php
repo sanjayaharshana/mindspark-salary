@@ -13,10 +13,16 @@ class RoleManagementController extends Controller
         $this->middleware('auth');
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $roles = Role::with('permissions')->paginate(10);
-        return view('admin.roles.index', compact('roles'));
+        $query = Role::withCount('users')->with('permissions');
+        if ($request->filled('search')) {
+            $query->where('name', 'like', '%' . $request->search . '%');
+        }
+        $roles = $query->orderBy('name')->paginate(15)->withQueryString();
+        $total = Role::count();
+        $totalPermissions = Permission::count();
+        return view('admin.roles.index', compact('roles', 'total', 'totalPermissions'));
     }
 
     public function create()

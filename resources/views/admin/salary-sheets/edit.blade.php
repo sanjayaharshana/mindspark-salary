@@ -54,7 +54,7 @@
         <form id="salarySheetForm" action="{{ route('admin.salary-sheets.update', $salarySheet) }}" method="POST">
             @csrf
             @method('PUT')
-            
+
             <!-- Basic Information -->
             <div style="background: #f8fafc; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem;">
                 <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 1rem;">
@@ -67,10 +67,10 @@
                         <select class="form-control" id="job_id" name="job_id" onchange="updateAttendanceDates()">
                             <option value="">Select Job</option>
                             @foreach($jobs as $job)
-                                <option value="{{ $job->id }}" 
-                                        data-start-date="{{ $job->start_date }}" 
+                                <option value="{{ $job->id }}"
+                                        data-start-date="{{ $job->start_date }}"
                                         data-end-date="{{ $job->end_date }}"
-                                        {{ $job->id == $salarySheet->job_id ? 'selected' : '' }}>{{ $job->job_number }}</option>
+                                        {{ $job->id == $salarySheet->job_id ? 'selected' : '' }}>{{ $job->job_number }} - {{ $job->job_name }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -129,7 +129,7 @@
                         <span id="scrollInfo" title="Use mouse drag, touch swipe, arrow keys, or buttons to scroll horizontally">Scroll to navigate</span>
                     </div>
                 </div>
-                
+
                 <!-- Table Scroll Container -->
                 <div class="table-scroll-container" id="tableScrollContainer">
                     <table class="salary-sheet-table" id="salaryTable">
@@ -226,15 +226,15 @@ document.addEventListener('DOMContentLoaded', function() {
         width: '100%',
         dropdownParent: $('body') // Ensure dropdown appears above other elements
     });
-    
+
     // Set up the job and load existing data
     const jobSelect = document.getElementById('job_id');
     if (jobSelect.value) {
         updateAttendanceDates();
     }
-    
-    // Load existing salary sheets for this job
-    const existingSheets = @json($jobSalarySheets);
+
+    // Load existing salary sheets for this job (items for the current salary sheet)
+    const existingSheets = @json($jobSalarySheets ?? []);
     if (existingSheets && existingSheets.length > 0) {
         loadExistingSalarySheetsFromData(existingSheets);
     }
@@ -243,11 +243,11 @@ document.addEventListener('DOMContentLoaded', function() {
 // Function to load existing salary sheets from passed data
 function loadExistingSalarySheetsFromData(sheets) {
     clearAllRows();
-    
+
     sheets.forEach((sheet, index) => {
         loadSalarySheetAsRow(sheet, index);
     });
-    
+
     calculateGrandTotal();
 }
 
@@ -255,18 +255,18 @@ function loadExistingSalarySheetsFromData(sheets) {
 function updateSalarySheet() {
     const form = document.getElementById('salarySheetForm');
     const rows = document.querySelectorAll('#promoterRows tr');
-    
+
     // Clear any existing hidden inputs
     const existingHiddenInputs = form.querySelectorAll('input[name^="rows["]');
     existingHiddenInputs.forEach(input => input.remove());
-    
+
     let hasValidRows = false;
-    
+
     rows.forEach((row, index) => {
         const promoterId = row.querySelector('select[name*="[promoter_id]"]')?.value;
         if (promoterId) {
             hasValidRows = true;
-            
+
             // Collect attendance data dynamically
             const attendanceData = {};
             if (currentAttendanceDates && currentAttendanceDates.length > 0) {
@@ -277,7 +277,7 @@ function updateSalarySheet() {
                     }
                 });
             }
-            
+
             // Create hidden inputs for each field
             const fields = {
                 'promoter_id': promoterId,
@@ -292,7 +292,7 @@ function updateSalarySheet() {
                 'coordinator_id': row.querySelector('select[name*="[coordinator_id]"]')?.value || '',
                 'coordination_fee': row.querySelector('input[name*="[coordination_fee]"]')?.value || 0,
             };
-            
+
             // Add each field as hidden input
             Object.keys(fields).forEach(fieldName => {
                 const hiddenInput = document.createElement('input');
@@ -301,7 +301,7 @@ function updateSalarySheet() {
                 hiddenInput.value = fields[fieldName];
                 form.appendChild(hiddenInput);
             });
-            
+
             // Add attendance data as hidden inputs
             Object.keys(attendanceData).forEach(date => {
                 const hiddenInput = document.createElement('input');
@@ -312,7 +312,7 @@ function updateSalarySheet() {
             });
         }
     });
-    
+
     if (!hasValidRows) {
         Swal.fire({
             icon: 'warning',
@@ -322,13 +322,13 @@ function updateSalarySheet() {
         });
         return;
     }
-    
+
     // Show loading state
     const updateBtn = document.querySelector('button[onclick="updateSalarySheet()"]');
     const originalText = updateBtn.innerHTML;
     updateBtn.disabled = true;
     updateBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;"><path d="M21 12a9 9 0 11-6.219-8.56"></path></svg>Updating...';
-    
+
     // Submit form
     form.submit();
 }

@@ -49,14 +49,14 @@
         }
 
         .sidebar-header h2 {
-            font-size: 1.6rem;
-            margin-bottom: 0.5rem;
+            font-size: 1rem;
+            margin-bottom: 0.25rem;
             font-weight: 600;
             color: #1f2937;
         }
 
         .sidebar-header p {
-            font-size: 0.85rem;
+            font-size: 0.75rem;
             opacity: 0.7;
             font-weight: 400;
             color: #6b7280;
@@ -64,24 +64,31 @@
 
         .sidebar-menu {
             list-style: none;
-            padding: 1.5rem 0;
+            padding: 0.5rem 0;
             margin: 0;
         }
 
         .sidebar-menu li {
-            margin: 0.2rem 1rem;
+            margin: 0.1rem 0.5rem;
         }
 
         .sidebar-menu a {
             display: flex;
             align-items: center;
-            padding: 0.875rem 1.25rem;
+            padding: 0.45rem 0.75rem;
             color: #6b7280;
             text-decoration: none;
-            border-radius: 8px;
+            border-radius: 6px;
             transition: all 0.2s ease;
             font-weight: 500;
-            font-size: 0.9rem;
+            font-size: 0.78rem;
+        }
+
+        .sidebar-menu a svg {
+            width: 15px;
+            height: 15px;
+            flex-shrink: 0;
+            margin-right: 8px !important;
         }
 
         .sidebar-menu a:hover {
@@ -110,20 +117,20 @@
 
         /* Menu Groups */
         .menu-group {
-            margin-bottom: 1rem;
+            margin-bottom: 0.35rem;
         }
 
         .menu-group-header {
             display: flex;
             align-items: center;
-            padding: 0.75rem 1rem;
-            font-size: 0.75rem;
+            padding: 0.35rem 0.75rem;
+            font-size: 0.65rem;
             font-weight: 600;
             color: #6b7280;
             text-transform: uppercase;
             letter-spacing: 0.05em;
             border-bottom: 1px solid #e5e7eb;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.25rem;
         }
 
         .submenu {
@@ -137,10 +144,10 @@
         }
 
         .submenu li a {
-            padding: 0.5rem 1rem 0.5rem 2rem;
-            font-size: 0.875rem;
+            padding: 0.35rem 0.75rem 0.35rem 1.75rem;
+            font-size: 0.75rem;
             border-radius: 0.375rem;
-            margin: 0.125rem 0.5rem;
+            margin: 0.1rem 0.5rem;
             display: flex;
             align-items: center;
             text-decoration: none;
@@ -159,7 +166,7 @@
         }
 
         .menu-item {
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.1rem;
         }
 
         .main-content {
@@ -169,7 +176,7 @@
 
         .header {
             background: #ffffff;
-            padding: 1.5rem 2rem;
+            padding: 0.75rem 1.5rem;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
             display: flex;
             justify-content: space-between;
@@ -179,7 +186,7 @@
 
         .header h1 {
             color: #1f2937;
-            font-size: 1.75rem;
+            font-size: 1.25rem;
             font-weight: 600;
             margin: 0;
         }
@@ -187,24 +194,24 @@
         .user-menu {
             display: flex;
             align-items: center;
-            gap: 1.5rem;
+            gap: 0.75rem;
         }
 
         .user-menu span {
             color: #6b7280;
             font-weight: 500;
-            font-size: 0.9rem;
+            font-size: 0.8rem;
         }
 
         .logout-btn {
             background: #6b7280;
             color: white;
             border: none;
-            padding: 0.625rem 1.25rem;
+            padding: 0.375rem 0.875rem;
             border-radius: 6px;
             cursor: pointer;
             text-decoration: none;
-            font-size: 0.85rem;
+            font-size: 0.78rem;
             font-weight: 500;
             transition: all 0.2s ease;
         }
@@ -217,7 +224,7 @@
         /* Breadcrumb Styles */
         .breadcrumb-container {
             background: #ffffff;
-            padding: 1rem 2rem;
+            padding: 0.5rem 1.5rem;
             border-bottom: 1px solid #e5e7eb;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
         }
@@ -225,8 +232,8 @@
         .breadcrumb {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
-            font-size: 0.875rem;
+            gap: 0.35rem;
+            font-size: 0.775rem;
         }
 
         .breadcrumb-item {
@@ -255,59 +262,66 @@
         }
 
         .content {
-            padding: 2rem;
+            padding: 1.25rem;
         }
 
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 0.875rem;
+            margin-bottom: 1.25rem;
         }
 
         .stat-card {
             background: white;
-            padding: 1.5rem;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 0.875rem 1rem;
+            border-radius: 8px;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
             text-align: center;
         }
 
         .stat-card h3 {
-            font-size: 2rem;
+            font-size: 1.5rem;
             color: #667eea;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.25rem;
         }
 
         .stat-card p {
             color: #666;
-            font-size: 0.9rem;
+            font-size: 0.78rem;
         }
 
         .card {
             background: white;
             border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            margin-bottom: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            margin-bottom: 1rem;
             border: 1px solid #e5e7eb;
             overflow: hidden;
         }
 
         .card-header {
-            padding: 1.5rem;
+            padding: 0.75rem 1.25rem;
             border-bottom: 1px solid #e5e7eb;
             background: #f9fafb;
         }
 
         .card-header h3 {
             color: #1f2937;
-            font-size: 1.25rem;
+            font-size: 0.95rem;
             font-weight: 600;
             margin: 0;
+            display: flex;
+            align-items: center;
+        }
+
+        .card-header h3 svg {
+            width: 15px;
+            height: 15px;
         }
 
         .card-body {
-            padding: 1.5rem;
+            padding: 1rem 1.25rem;
         }
 
         .btn {
@@ -601,6 +615,59 @@
         }
 
         /* Common Pagination Styles for All Admin Pages */
+        /* ── Custom pagination (default.blade.php) ── */
+        .pagination-nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: .5rem;
+            padding: .6rem 1rem;
+            font-size: .78rem;
+        }
+        .pagination-info { color: #6b7280; font-size: .75rem; }
+        .pagination {
+            display: flex;
+            align-items: center;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            gap: .2rem;
+        }
+        .page-item .page-link,
+        .page-item span.page-link {
+            display: inline-flex;
+            align-items: center;
+            gap: .25rem;
+            padding: .3rem .65rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            font-size: .78rem;
+            font-weight: 500;
+            color: #374151;
+            background: #fff;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all .15s;
+            line-height: 1.4;
+        }
+        .page-item .page-link:hover { background: #f3f4f6; border-color: #d1d5db; }
+        .page-item.active .page-link,
+        .page-item.active span.page-link {
+            background: #3b82f6;
+            border-color: #3b82f6;
+            color: #fff;
+        }
+        .page-item.disabled .page-link,
+        .page-item.disabled span.page-link {
+            color: #9ca3af;
+            background: #f9fafb;
+            border-color: #e5e7eb;
+            cursor: default;
+        }
+        .page-item .page-link svg,
+        .page-item span.page-link svg { width: 12px; height: 12px; flex-shrink: 0; }
+
         .pagination-container {
             margin-top: 1.5rem;
             padding-top: 1rem;
@@ -866,7 +933,7 @@
 <body>
     <div class="sidebar">
         <div class="sidebar-header" style="text-align: center;">
-            <img src="{{ asset('logo-righ-text.png') }}" alt="Logo" style="width: 200px;height: 60px;margin-bottom: 1rem;object-fit: contain;margin-top: 20px;">
+            <img src="{{ asset('logo-righ-text.png') }}" alt="Logo" style="width: 160px;height: 44px;margin-bottom: 0.5rem;object-fit: contain;margin-top: 12px;">
         </div>
         <ul class="sidebar-menu">
             <!-- Dashboard -->

@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Pagination\Paginator;
 use Laravel\Socialite\Contracts\Factory;
 use App\Http\Socialite\XelenicProvider;
 
@@ -21,6 +22,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Paginator::defaultView('vendor.pagination.default');
+
         $socialite = $this->app->make(Factory::class);
 
         $socialite->extend('xelenic', function ($app) use ($socialite) {
