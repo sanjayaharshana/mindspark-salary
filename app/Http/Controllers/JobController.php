@@ -96,7 +96,7 @@ class JobController extends Controller
             $query->where('client_id', $request->client_id);
         }
 
-        $jobs = $query->latest()->paginate(15)->withQueryString();
+        $jobs = $query->orderByDesc('id')->paginate(15)->withQueryString();
 
         $officers = User::role('officer')->orderBy('name')->get();
         $reporters = User::role('reporter')->orderBy('name')->get();
