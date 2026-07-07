@@ -148,11 +148,13 @@ class SalarySheetController extends Controller
             $sheetNumber = SalarySheet::generateSheetNumber();
 
             $salarySheet = SalarySheet::create([
-                'sheet_no' => $sheetNumber,
-                'job_id' => $request->job_id,
-                'status' => $request->status,
-                'location' => $request->location,
-                'notes' => $request->notes,
+                'sheet_no'   => $sheetNumber,
+                'job_id'     => $request->job_id,
+                'status'     => $request->status,
+                'location'   => $request->location,
+                'start_date' => $request->start_date ?: null,
+                'end_date'   => $request->end_date   ?: null,
+                'notes'      => $request->notes,
                 'created_by' => auth()->id(),
             ]);
 
@@ -460,10 +462,12 @@ class SalarySheetController extends Controller
             }
 
             $salarySheet->update([
-                'job_id' => $request->job_id,
-                'status' => $request->status,
-                'location' => $request->location,
-                'notes' => $request->notes,
+                'job_id'     => $request->job_id,
+                'status'     => $request->status,
+                'location'   => $request->location,
+                'start_date' => $request->start_date ?: null,
+                'end_date'   => $request->end_date   ?: null,
+                'notes'      => $request->notes,
             ]);
 
             // Send email to admin, job's reporter, and job's officer when status is complete
@@ -915,6 +919,8 @@ class SalarySheetController extends Controller
                 'job_id' => (string) $salarySheet->job_id,
                 'status' => $salarySheet->status,
                 'location' => $salarySheet->location,
+                'start_date' => $salarySheet->start_date?->format('Y-m-d'),
+                'end_date'   => $salarySheet->end_date?->format('Y-m-d'),
                 'rows' => [],
                 'notes' => $salarySheet->notes
             ];

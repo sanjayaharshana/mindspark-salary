@@ -322,7 +322,13 @@
                     @endphp
                     <tr>
                         <td><span class="si-sheet-no">{{ $sheet->sheet_no }}</span></td>
-                        <td style="white-space:nowrap;color:#6b7280;font-size:.78rem;">{{ $sheet->created_at->format('M Y') }}</td>
+                        <td style="white-space:nowrap;color:#6b7280;font-size:.78rem;">
+                            @if($sheet->start_date || $sheet->end_date)
+                                {{ $sheet->start_date?->format('d M Y') ?? '—' }}@if($sheet->end_date) → {{ $sheet->end_date->format('d M Y') }}@endif
+                            @else
+                                {{ $sheet->created_at->format('M Y') }}
+                            @endif
+                        </td>
                         <td style="text-align:center;">
                             <span class="si-count" style="background:#ede9fe;color:#4f46e5;">{{ $sheet->items_count }}</span>
                         </td>

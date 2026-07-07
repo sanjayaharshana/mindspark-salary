@@ -17,11 +17,15 @@ class SalarySheet extends Model
         'job_id',
         'status',
         'location',
+        'start_date',
+        'end_date',
         'notes',
         'created_by',
     ];
 
     protected $casts = [
+        'start_date' => 'date',
+        'end_date'   => 'date',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];

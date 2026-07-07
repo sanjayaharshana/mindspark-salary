@@ -659,6 +659,18 @@ body.sc-fullscreen .sc-status-btn { height: 29px; font-size: .78rem; padding: 0 
         <input type="text" class="sc-info-input" name="location" placeholder="Enter location"
                value="{{ isset($editSalarySheet) ? ($editSalarySheet->location ?? '') : '' }}">
     </div>
+    <div class="sc-info-item">
+        <span class="sc-info-label">Start Date</span>
+        <input type="date" class="sc-info-input" id="sheet_start_date" name="start_date"
+               value="{{ isset($editSalarySheet) ? ($editSalarySheet->start_date?->format('Y-m-d') ?? '') : '' }}"
+               onchange="scApplyPeriodDates()">
+    </div>
+    <div class="sc-info-item">
+        <span class="sc-info-label">End Date</span>
+        <input type="date" class="sc-info-input" id="sheet_end_date" name="end_date"
+               value="{{ isset($editSalarySheet) ? ($editSalarySheet->end_date?->format('Y-m-d') ?? '') : '' }}"
+               onchange="scApplyPeriodDates()">
+    </div>
 </div>
 
 {{-- ── Compact Action Toolbar ── --}}
@@ -945,6 +957,21 @@ function scApplyFullscreenState() {
     } catch(e) {}
 }
 scApplyFullscreenState();
+
+// Build attendance columns from the sheet's own Start Date / End Date fields
+function scApplyPeriodDates() {
+    const s = document.getElementById('sheet_start_date')?.value;
+    const e = document.getElementById('sheet_end_date')?.value;
+    if (!s || !e || e < s) return;
+    const dates = generateDateRange(s, e);
+    if (!dates.length) return;
+    currentAttendanceDates = dates;
+    updateAttendanceHeaders(dates);
+    updateExistingRows(dates);
+    const legend = document.getElementById('attendanceLegend');
+    if (legend) legend.style.display = 'block';
+}
+
 // Allow Esc to exit fullscreen
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape' && document.body.classList.contains('sc-fullscreen')) {
@@ -1127,9 +1154,35 @@ function scLoadSheet(sheetId) {
                 const labels = {draft:'Draft',complete:'Complete',reject:'Reject',approve:'Approve',paid:'Paid'};
                 selectStatusOption(jsonData.status, labels[jsonData.status] || jsonData.status);
             }
-            updateAttendanceHeaders(_scPickerDates);
-            updateExistingRows(_scPickerDates);
-            currentAttendanceDates = _scPickerDates;
+
+            // Build attendance date set from: sheet date range + saved attendance keys + _scPickerDates
+            const loadedDates = new Set(_scPickerDates);
+            if (jsonData.start_date && jsonData.end_date && jsonData.end_date >= jsonData.start_date) {
+                generateDateRange(jsonData.start_date, jsonData.end_date).forEach(d => loadedDates.add(d));
+            }
+            if (jsonData.rows) {
+                Object.values(jsonData.rows).forEach(function(row) {
+                    if (row.attendance && typeof row.attendance === 'object') {
+                        Object.keys(row.attendance).forEach(function(d) {
+                            if (/^\d{4}-\d{2}-\d{2}$/.test(d)) loadedDates.add(d);
+                        });
+                    }
+                });
+            }
+            currentAttendanceDates = Array.from(loadedDates).sort();
+            updateAttendanceHeaders(currentAttendanceDates);
+            updateExistingRows(currentAttendanceDates);
+
+            // Auto-fill start/end date inputs when blank
+            const startInput = document.getElementById('sheet_start_date');
+            const endInput   = document.getElementById('sheet_end_date');
+            if (jsonData.start_date && startInput && !startInput.value) startInput.value = jsonData.start_date;
+            if (jsonData.end_date   && endInput   && !endInput.value)   endInput.value   = jsonData.end_date;
+            if (!jsonData.start_date && currentAttendanceDates.length > 0) {
+                if (startInput && !startInput.value) startInput.value = currentAttendanceDates[0];
+                if (endInput   && !endInput.value)   endInput.value   = currentAttendanceDates[currentAttendanceDates.length - 1];
+            }
+
             if (jsonData.rows && Object.keys(jsonData.rows).length > 0) {
                 clearAllRows();
                 let idx = 0;
@@ -1545,46 +1598,20 @@ document.addEventListener('click', function(e) {
 
 <!-- Add Custom Date Modal -->
 <div id="addCustomDateModal" class="modal" style="display: none;">
-    <div class="modal-content" style="max-width: 480px;">
+    <div class="modal-content" style="max-width: 500px;">
         <div class="modal-header">
             <h3>Add Custom Attendance Date</h3>
             <span class="close" id="closeAddCustomDateModal">&times;</span>
         </div>
         <div class="modal-body">
-            {{-- Mode toggle --}}
-            <div style="display:flex;gap:.5rem;margin-bottom:1.1rem;">
-                <button type="button" id="cdm-tab-single" onclick="cdmSwitchMode('single')"
-                    style="flex:1;padding:.45rem .5rem;border-radius:7px;font-size:.82rem;font-weight:600;border:1.5px solid #4f46e5;background:#4f46e5;color:#fff;cursor:pointer;transition:all .15s;">
-                    Single Date
-                </button>
-                <button type="button" id="cdm-tab-range" onclick="cdmSwitchMode('range')"
-                    style="flex:1;padding:.45rem .5rem;border-radius:7px;font-size:.82rem;font-weight:600;border:1.5px solid #e5e7eb;background:#f9fafb;color:#6b7280;cursor:pointer;transition:all .15s;">
-                    Day Count
-                </button>
+            <div class="form-group">
+                <label for="customDateInput">Select Date:</label>
+                <input type="date" id="customDateInput" class="form-control" required>
             </div>
-
-            {{-- Single date panel --}}
-            <div id="cdm-panel-single">
-                <div class="form-group">
-                    <label for="customDateInput" style="font-size:.83rem;font-weight:600;color:#374151;">Select Date</label>
-                    <input type="date" id="customDateInput" class="form-control" style="margin-top:.3rem;">
-                </div>
-            </div>
-
-            {{-- Day count panel --}}
-            <div id="cdm-panel-range" style="display:none;">
-                <div class="form-group" style="margin-bottom:.75rem;">
-                    <label for="cdm-day-count" style="font-size:.83rem;font-weight:600;color:#374151;">Number of Days</label>
-                    <input type="number" id="cdm-day-count" class="form-control" min="1" max="366" placeholder="e.g. 25" style="margin-top:.3rem;" oninput="cdmUpdatePreview()">
-                    <div style="font-size:.75rem;color:#6b7280;margin-top:.35rem;">Columns will be labelled <em>Day 1, Day 2, …</em> (no specific dates)</div>
-                </div>
-                <div id="cdm-preview" style="display:none;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:7px;padding:.55rem .75rem;font-size:.8rem;color:#15803d;margin-bottom:.25rem;"></div>
-            </div>
-
-            <div id="customDateError" style="color:#dc3545;margin-top:.5rem;font-size:.82rem;display:none;"></div>
+            <div id="customDateError" style="color: #dc3545; margin-top: 0.5rem; display: none;"></div>
         </div>
         <div class="modal-footer">
-            <button type="button" id="addCustomDateBtnModal" class="btn btn-primary" onclick="addCustomDateToAttendance()">Add Date</button>
+            <button type="button" id="addCustomDateBtnModal" class="btn btn-primary">Add Date</button>
             <button type="button" id="cancelAddCustomDateBtn" class="btn btn-secondary">Cancel</button>
         </div>
     </div>
@@ -2082,9 +2109,7 @@ function addPromoterRow() {
 
     if (currentAttendanceDates && currentAttendanceDates.length > 0) {
         attendanceInputs = currentAttendanceDates.map(date =>
-            date === 'days_count'
-                ? `<input type="number" class="table-input-small" name="rows[${nextRowNumber}][attendance][days_count]" min="0" step="1" onchange="calculateRowTotal(${nextRowNumber})" placeholder="Days">`
-                : `<input type="number" class="table-input-small" name="rows[${nextRowNumber}][attendance][${date}]" min="0" max="1" step="1" onchange="calculateRowTotal(${nextRowNumber})" placeholder="0/1">`
+            `<input type="number" class="table-input-small" name="rows[${nextRowNumber}][attendance][${date}]" min="0" max="1" step="1" onchange="calculateRowTotal(${nextRowNumber})" placeholder="0/1">`
         ).join('');
     }
     // If no dates, don't add any attendance inputs (empty columns)
@@ -2125,7 +2150,7 @@ function addPromoterRow() {
         <td id="attendanceCell-${nextRowNumber}" style="display: table-cell; width: ${attendanceWidth}px;">
             <div style="display: grid; grid-template-columns: repeat(${numDates}, 1fr) 1fr 1.5fr; gap: 0.75rem; width: ${attendanceWidth}px;">
                 ${attendanceInputs}
-                <input type="number" class="table-input-small calculated-cell" name="rows[${nextRowNumber}][attendance_total]" readonly>
+                <input type="number" class="table-input-small" name="rows[${nextRowNumber}][attendance_total]" min="0" step="0.1" placeholder="0" oninput="onAttendanceTotalManualChange(${nextRowNumber}, this)">
                 <input type="number" step="0.01" class="table-input-small" name="rows[${nextRowNumber}][attendance_amount]" title="Attendance Amount (Auto-calculated, but editable)" oninput="calculateNetAmount(${nextRowNumber})">
             </div>
         </td>
@@ -2844,259 +2869,28 @@ function validateAttendanceInput(input) {
 let isUpdatingAttendanceDates = false;
 
 function updateAttendanceDates() {
-    // Prevent infinite loops
-    if (isUpdatingAttendanceDates) {
-        console.log('updateAttendanceDates() already running, skipping...');
-        return;
-    }
-
+    if (isUpdatingAttendanceDates) return;
     isUpdatingAttendanceDates = true;
-    const jobHidden = document.getElementById('job_id');
-    const noJobMessage = document.getElementById('noJobMessage');
-    const noEndDateMessage = document.getElementById('noEndDateMessage');
+
+    const jobHidden            = document.getElementById('job_id');
+    const noJobMessage         = document.getElementById('noJobMessage');
+    const noEndDateMessage     = document.getElementById('noEndDateMessage');
     const salaryTableContainer = document.getElementById('salaryTableContainer');
-    const addPromoterBtn = document.getElementById('addPromoterBtn');
-    const salaryRuleBtn = document.getElementById('salaryRuleBtn');
-    const allowanceRuleBtn = document.getElementById('allowanceRuleBtn');
-    const attendanceLegend = document.getElementById('attendanceLegend');
+    const addPromoterBtn       = document.getElementById('addPromoterBtn');
+    const salaryRuleBtn        = document.getElementById('salaryRuleBtn');
+    const allowanceRuleBtn     = document.getElementById('allowanceRuleBtn');
+    const attendanceLegend     = document.getElementById('attendanceLegend');
 
-    if (jobHidden.value) {
-        const startDate = jobHidden.getAttribute('data-start-date');
-        const endDate   = jobHidden.getAttribute('data-end-date');
-        const jobId     = jobHidden.value;
-
-        // Check if end date is null
-        if (!endDate || endDate === 'null' || endDate === '') {
-            // Show message
-            if (noEndDateMessage) {
-                noEndDateMessage.style.display = 'block';
-            }
-            if (noJobMessage) {
-                noJobMessage.style.display = 'none';
-            }
-
-            // Start with empty dates, but fetch existing salary sheets to get custom dates
-            const allDates = new Set();
-
-            // Fetch existing salary sheets to get custom dates
-            fetch(`/admin/salary-sheets/by-job/${jobId}`, {
-                method: 'GET',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                // Extract custom dates from existing salary sheets
-                if (data.success && data.salarySheets && data.salarySheets.length > 0) {
-                    data.salarySheets.forEach(sheet => {
-                        if (sheet.items && Array.isArray(sheet.items)) {
-                            sheet.items.forEach(item => {
-                                if (item.attendance_data && item.attendance_data.attendance) {
-                                    Object.keys(item.attendance_data.attendance).forEach(date => {
-                                        allDates.add(date);
-                                    });
-                                }
-                            });
-                        }
-                        // Also check if sheet has direct attendance_data (for backward compatibility)
-                        if (sheet.attendance_data && typeof sheet.attendance_data === 'object') {
-                            if (sheet.attendance_data.attendance) {
-                                Object.keys(sheet.attendance_data.attendance).forEach(date => {
-                                    allDates.add(date);
-                                });
-                            } else {
-                                // Direct date keys
-                                Object.keys(sheet.attendance_data).forEach(date => {
-                                    if (date.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                                        allDates.add(date);
-                                    }
-                                });
-                            }
-                        }
-                    });
-                }
-
-                // Convert Set to sorted array
-                const finalDates = Array.from(allDates).sort();
-
-                // Always update headers with the resolved dates
-                updateAttendanceHeaders(finalDates);
-                updateExistingRows(finalDates);
-                currentAttendanceDates = finalDates;
-
-                // Show picker if existing sheets found, otherwise start fresh
-                if (data.success && data.salarySheets && data.salarySheets.length > 0) {
-                    scShowPicker(data.salarySheets, finalDates);
-                    isUpdatingAttendanceDates = false;
-                } else {
-                    // No salary sheets — show empty table
-                    clearAllRows();
-                    addPromoterRow();
-                    const sheetNumberInput = document.getElementById('sheet_number');
-                    if (sheetNumberInput) sheetNumberInput.value = '';
-                    selectStatusOption('draft', 'Draft');
-                    calculateGrandTotal();
-                    if (salaryTableContainer) salaryTableContainer.style.display = 'block';
-                    if (attendanceLegend) attendanceLegend.style.display = finalDates.length > 0 ? 'block' : 'none';
-                    // Enable buttons
-                    if (addPromoterBtn) addPromoterBtn.disabled = false;
-                    const bulkBtn = document.getElementById('bulkAddRowsBtn'); if (bulkBtn) bulkBtn.disabled = false;
-                    if (salaryRuleBtn) salaryRuleBtn.disabled = false;
-                    if (allowanceRuleBtn) allowanceRuleBtn.disabled = false;
-                    const addCustomDateBtn = document.getElementById('addCustomDateBtn');
-                    if (addCustomDateBtn) addCustomDateBtn.disabled = false;
-                    initializeAfterDatesUpdate();
-                    isUpdatingAttendanceDates = false;
-                }
-            })
-            .catch(error => {
-                console.error('Error fetching custom dates:', error);
-                // Fallback to empty dates if fetch fails
-                currentAttendanceDates = [];
-                updateAttendanceHeaders([]);
-                updateExistingRows([]);
-
-                // Show table but with empty attendance columns
-                if (salaryTableContainer) {
-                    salaryTableContainer.style.display = 'block';
-                }
-                if (attendanceLegend) {
-                    attendanceLegend.style.display = 'none';
-                }
-
-                // Enable buttons
-                if (addPromoterBtn) addPromoterBtn.disabled = false;
-                const bulkBtn = document.getElementById('bulkAddRowsBtn'); if (bulkBtn) bulkBtn.disabled = false;
-                if (salaryRuleBtn) salaryRuleBtn.disabled = false;
-                if (allowanceRuleBtn) allowanceRuleBtn.disabled = false;
-
-                // Enable add custom date button when no end date
-                const addCustomDateBtn = document.getElementById('addCustomDateBtn');
-                if (addCustomDateBtn) {
-                    addCustomDateBtn.disabled = false;
-                }
-
-                // Clear all rows and add one empty row
-                clearAllRows();
-                addPromoterRow();
-                calculateGrandTotal();
-
-                // Continue with initialization
-                initializeAfterDatesUpdate();
-                isUpdatingAttendanceDates = false;
-            });
-        } else {
-            // Hide no end date message if end date exists
-            if (noEndDateMessage) {
-                noEndDateMessage.style.display = 'none';
-            }
-        }
-
-        if (startDate && endDate) {
-            // Start with dates from job date range
-            const jobDates = generateDateRange(startDate, endDate);
-            const allDates = new Set(jobDates);
-
-            // Fetch existing salary sheets to get custom dates
-            fetch(`/admin/salary-sheets/by-job/${jobId}`, {
-                method: 'GET',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                // Extract custom dates from existing salary sheets
-                if (data.success && data.salarySheets && data.salarySheets.length > 0) {
-                    data.salarySheets.forEach(sheet => {
-                        if (sheet.items && Array.isArray(sheet.items)) {
-                            sheet.items.forEach(item => {
-                                if (item.attendance_data && item.attendance_data.attendance) {
-                                    Object.keys(item.attendance_data.attendance).forEach(date => {
-                                        allDates.add(date);
-                                    });
-                                }
-                            });
-                        }
-                        // Also check if sheet has direct attendance_data (for backward compatibility)
-                        if (sheet.attendance_data && typeof sheet.attendance_data === 'object') {
-                            if (sheet.attendance_data.attendance) {
-                                Object.keys(sheet.attendance_data.attendance).forEach(date => {
-                                    allDates.add(date);
-                                });
-                            } else {
-                                // Direct date keys
-                                Object.keys(sheet.attendance_data).forEach(date => {
-                                    if (date.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                                        allDates.add(date);
-                                    }
-                                });
-                            }
-                        }
-                    });
-                }
-
-                // Convert Set to sorted array
-                const finalDates = Array.from(allDates).sort();
-
-                // Update attendance headers and rows with all dates (including custom ones)
-                updateAttendanceHeaders(finalDates);
-                updateExistingRows(finalDates);
-                currentAttendanceDates = finalDates;
-
-                // Show picker if existing sheets found, otherwise start fresh
-                if (data.success && data.salarySheets && data.salarySheets.length > 0) {
-                    scShowPicker(data.salarySheets, finalDates);
-                    isUpdatingAttendanceDates = false;
-                } else {
-                    // No salary sheets — show empty table
-                    clearAllRows();
-                    addPromoterRow();
-                    const sheetNumberInput = document.getElementById('sheet_number');
-                    if (sheetNumberInput) sheetNumberInput.value = '';
-                    selectStatusOption('draft', 'Draft');
-                    calculateGrandTotal();
-                    if (salaryTableContainer) salaryTableContainer.style.display = 'block';
-                    initializeAfterDatesUpdate();
-                    isUpdatingAttendanceDates = false;
-                }
-            })
-            .catch(error => {
-                console.error('Error fetching custom dates:', error);
-                // Fallback to job dates only if fetch fails
-                updateAttendanceHeaders(jobDates);
-                updateExistingRows(jobDates);
-                currentAttendanceDates = jobDates;
-                initializeAfterDatesUpdate();
-                isUpdatingAttendanceDates = false;
-            });
-        } else {
-            // No date range, just initialize
-            currentAttendanceDates = [];
-            updateAttendanceHeaders([]);
-            updateExistingRows([]);
-            initializeAfterDatesUpdate();
-            isUpdatingAttendanceDates = false;
-        }
-    } else {
+    if (!jobHidden || !jobHidden.value) {
         // No job selected
         currentAttendanceDates = [];
         updateAttendanceHeaders([]);
         updateExistingRows([]);
-
-        // Clear all rows and add one empty row
         clearAllRows();
         addPromoterRow();
-
-        // Hide table, picker, and show message
-        noJobMessage.style.display = 'block';
-        salaryTableContainer.style.display = 'none';
-        attendanceLegend.style.display = 'none';
+        if (noJobMessage)         noJobMessage.style.display         = 'block';
+        if (salaryTableContainer) salaryTableContainer.style.display = 'none';
+        if (attendanceLegend)     attendanceLegend.style.display     = 'none';
         scHidePicker();
 
         // Disable buttons
@@ -3120,7 +2914,80 @@ function updateAttendanceDates() {
         hasAutoPulledData = false;
         lastSelectedJobId = null;
         isUpdatingAttendanceDates = false;
+        return;
     }
+
+    // ── Job is selected ──────────────────────────────────────────────────────
+    // Attendance columns come from the sheet's own Start Date / End Date,
+    // NOT from the job's dates.
+    const jobId      = jobHidden.value;
+    const sheetStart = document.getElementById('sheet_start_date')?.value || '';
+    const sheetEnd   = document.getElementById('sheet_end_date')?.value   || '';
+
+    if (noJobMessage)     noJobMessage.style.display     = 'none';
+    if (noEndDateMessage) noEndDateMessage.style.display = 'none';
+
+    // Build date range from sheet dates (empty set if not set yet)
+    const baseDates = (sheetStart && sheetEnd && sheetEnd >= sheetStart)
+        ? new Set(generateDateRange(sheetStart, sheetEnd))
+        : new Set();
+
+    // Always fetch existing salary sheets for the picker
+    fetch(`/admin/salary-sheets/by-job/${jobId}`, {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        const finalDates = Array.from(baseDates).sort();
+
+        updateAttendanceHeaders(finalDates);
+        updateExistingRows(finalDates);
+        currentAttendanceDates = finalDates;
+
+        if (data.success && data.salarySheets && data.salarySheets.length > 0) {
+            scShowPicker(data.salarySheets, finalDates);
+        } else {
+            clearAllRows();
+            addPromoterRow();
+            const sheetNumberInput = document.getElementById('sheet_number');
+            if (sheetNumberInput) sheetNumberInput.value = '';
+            selectStatusOption('draft', 'Draft');
+            calculateGrandTotal();
+            if (salaryTableContainer) salaryTableContainer.style.display = 'block';
+            if (attendanceLegend) attendanceLegend.style.display = finalDates.length > 0 ? 'block' : 'none';
+            if (addPromoterBtn) addPromoterBtn.disabled = false;
+            const bulkBtn = document.getElementById('bulkAddRowsBtn'); if (bulkBtn) bulkBtn.disabled = false;
+            if (salaryRuleBtn) salaryRuleBtn.disabled = false;
+            if (allowanceRuleBtn) allowanceRuleBtn.disabled = false;
+            const addCustomDateBtn = document.getElementById('addCustomDateBtn');
+            if (addCustomDateBtn) addCustomDateBtn.disabled = false;
+            initializeAfterDatesUpdate();
+        }
+        isUpdatingAttendanceDates = false;
+    })
+    .catch(error => {
+        console.error('Error fetching salary sheets:', error);
+        const finalDates = Array.from(baseDates).sort();
+        updateAttendanceHeaders(finalDates);
+        updateExistingRows(finalDates);
+        currentAttendanceDates = finalDates;
+        if (salaryTableContainer) salaryTableContainer.style.display = 'block';
+        if (attendanceLegend) attendanceLegend.style.display = finalDates.length > 0 ? 'block' : 'none';
+        if (addPromoterBtn) addPromoterBtn.disabled = false;
+        const bulkBtn = document.getElementById('bulkAddRowsBtn'); if (bulkBtn) bulkBtn.disabled = false;
+        if (salaryRuleBtn) salaryRuleBtn.disabled = false;
+        if (allowanceRuleBtn) allowanceRuleBtn.disabled = false;
+        clearAllRows();
+        addPromoterRow();
+        calculateGrandTotal();
+        initializeAfterDatesUpdate();
+        isUpdatingAttendanceDates = false;
+    });
 }
 
 // Helper function to initialize after dates are updated
@@ -3175,10 +3042,7 @@ function initializeAfterDatesUpdate() {
             attendanceLegend.style.display = (currentAttendanceDates && currentAttendanceDates.length > 0) ? 'block' : 'none';
         }
 
-        // Hide no end date message if end date exists
-        if (noEndDateMessage && hasEndDate) {
-            noEndDateMessage.style.display = 'none';
-        }
+        if (noEndDateMessage) noEndDateMessage.style.display = 'none';
 
         // Enable buttons
         if (addPromoterBtn) addPromoterBtn.disabled = false;
@@ -3186,10 +3050,7 @@ function initializeAfterDatesUpdate() {
         if (salaryRuleBtn) salaryRuleBtn.disabled = false;
         if (allowanceRuleBtn) allowanceRuleBtn.disabled = false;
         const addCustomDateBtn = document.getElementById('addCustomDateBtn');
-        if (addCustomDateBtn) {
-            // Enable add custom date button ONLY if no end date (allow custom dates only when end date is null)
-            addCustomDateBtn.disabled = hasEndDate;
-        }
+        if (addCustomDateBtn) addCustomDateBtn.disabled = false;
 
         // Initialize horizontal scroll functionality
         setTimeout(() => {
@@ -3239,17 +3100,17 @@ function updateAttendanceHeaders(dates) {
     // Clear existing headers
     headersContainer.innerHTML = '';
 
-    // Add date / day headers (only if entries exist)
+    // Add date headers (only if dates exist)
     if (dates.length > 0) {
         dates.forEach(date => {
             const dateDiv = document.createElement('div');
             dateDiv.style.textAlign = 'center';
             dateDiv.style.fontSize = '0.7rem';
-            dateDiv.textContent = date === 'days_count' ? 'Days' : date;
+            dateDiv.textContent = date;
             headersContainer.appendChild(dateDiv);
         });
     }
-    // If no entries, don't add any headers (empty columns)
+    // If no dates, don't add any date headers (empty columns)
 
     // Add Total and Amount headers
     const totalDiv = document.createElement('div');
@@ -3314,9 +3175,13 @@ function updateExistingRows(dates) {
                 // Add Total input
                 const totalInput = document.createElement('input');
                 totalInput.type = 'number';
-                totalInput.className = 'table-input-small calculated-cell';
-                totalInput.name = `rows[${getRowNumberFromElement(row)}][attendance_total]`;
-                totalInput.readOnly = true;
+                totalInput.className = 'table-input-small';
+                totalInput.min = '0';
+                totalInput.step = '0.1';
+                totalInput.placeholder = '0';
+                const _rn = getRowNumberFromElement(row);
+                totalInput.name = `rows[${_rn}][attendance_total]`;
+                totalInput.oninput = function() { onAttendanceTotalManualChange(_rn, this); };
                 gridContainer.appendChild(totalInput);
 
                 // Add Amount input
@@ -3625,6 +3490,15 @@ function calculateRowTotal(rowNum) {
         // Calculate allowances based on attendance (if multiply_by_attendance is enabled)
         calculateAllowances(rowNum, total);
         // Apply job settings to this row when attendance changes
+        applyJobSettingsToRow(rowNum);
+        calculateRowNet(rowNum);
+    });
+}
+
+function onAttendanceTotalManualChange(rowNum, input) {
+    const total = parseFloat(input.value) || 0;
+    calculateAttendanceAmount(rowNum, total).then(() => {
+        calculateAllowances(rowNum, total);
         applyJobSettingsToRow(rowNum);
         calculateRowNet(rowNum);
     });
@@ -4083,9 +3957,7 @@ function duplicateRow(rowNum) {
     const numDates = currentAttendanceDates ? currentAttendanceDates.length : 0;
     if (currentAttendanceDates && currentAttendanceDates.length > 0) {
         attendanceInputsHTML = currentAttendanceDates.map(date =>
-            date === 'days_count'
-                ? `<input type="number" class="table-input-small" name="rows[${nextRowNumber}][attendance][days_count]" min="0" step="1" value="${attendanceData['days_count'] || ''}" onchange="calculateRowTotal(${nextRowNumber})" placeholder="Days">`
-                : `<input type="number" class="table-input-small" name="rows[${nextRowNumber}][attendance][${date}]" min="0" max="1" step="1" value="${attendanceData[date] || '0'}" onchange="calculateRowTotal(${nextRowNumber})" placeholder="0/1">`
+            `<input type="number" class="table-input-small" name="rows[${nextRowNumber}][attendance][${date}]" min="0" max="1" step="1" value="${attendanceData[date] || '0'}" onchange="calculateRowTotal(${nextRowNumber})" placeholder="0/1">`
         ).join('');
     }
 
@@ -4125,7 +3997,7 @@ function duplicateRow(rowNum) {
         <td id="attendanceCell-${nextRowNumber}" style="display: table-cell; width: ${attendanceWidth}px;">
             <div style="display: grid; grid-template-columns: repeat(${numDates}, 1fr) 1fr 1.5fr; gap: 0.75rem; width: ${attendanceWidth}px;">
                 ${attendanceInputsHTML}
-                <input type="number" class="table-input-small calculated-cell" name="rows[${nextRowNumber}][attendance_total]" value="${sourceAttendanceTotal}" readonly>
+                <input type="number" class="table-input-small" name="rows[${nextRowNumber}][attendance_total]" min="0" step="0.1" placeholder="0" value="${sourceAttendanceTotal}" oninput="onAttendanceTotalManualChange(${nextRowNumber}, this)">
                 <input type="number" step="0.01" class="table-input-small" name="rows[${nextRowNumber}][attendance_amount]" value="${sourceAttendanceAmount}" title="Attendance Amount (Auto-calculated, but editable)" oninput="calculateNetAmount(${nextRowNumber})">
             </div>
         </td>
@@ -4458,9 +4330,7 @@ function loadSalarySheetAsRow(sheet, index) {
                     attendanceValue = sheet.attendance_data[date] || 0;
                 }
             }
-            attendanceInputs += date === 'days_count'
-                ? `<input type="number" class="table-input-small" name="rows[${index}][attendance][days_count]" value="${attendanceValue || ''}" min="0" step="1" onchange="calculateRowTotal(${index})" placeholder="Days">`
-                : `<input type="number" class="table-input-small" name="rows[${index}][attendance][${date}]" value="${attendanceValue}" min="0" max="1" step="0.01" onchange="calculateRowTotal(${index})">`;
+            attendanceInputs += `<input type="number" class="table-input-small" name="rows[${index}][attendance][${date}]" value="${attendanceValue}" min="0" max="1" step="0.01" onchange="calculateRowTotal(${index})">`;
         });
     }
     // If no dates, don't add any attendance inputs (empty columns)
@@ -4508,7 +4378,7 @@ function loadSalarySheetAsRow(sheet, index) {
         <td id="attendanceCell-${index}" style="display: table-cell; width: ${attendanceWidth}px;">
             <div style="display: grid; grid-template-columns: repeat(${numDates}, 1fr) 1fr 1.5fr; gap: 0.75rem; width: ${attendanceWidth}px;">
                 ${attendanceInputs}
-                <input type="number" class="table-input-small calculated-cell" name="rows[${index}][attendance_total]" value="${sheet.attendance_total || 0}" readonly>
+                <input type="number" class="table-input-small" name="rows[${index}][attendance_total]" min="0" step="0.1" placeholder="0" value="${sheet.attendance_total || 0}" oninput="onAttendanceTotalManualChange(${index}, this)">
                 <input type="number" step="0.01" class="table-input-small" name="rows[${index}][attendance_amount]" value="${sheet.attendance_amount || 0}" title="Attendance Amount (Auto-calculated, but editable)" oninput="calculateNetAmount(${index})">
             </div>
         </td>
@@ -4600,11 +4470,31 @@ document.addEventListener('DOMContentLoaded', function() {
         const allowanceRuleBtn = document.getElementById('allowanceRuleBtn');
         const attendanceLegend = document.getElementById('attendanceLegend');
         if (jobHidden && jobHidden.value) {
-            const start = jobHidden.getAttribute('data-start-date');
-            const end = jobHidden.getAttribute('data-end-date');
-            if (start && end) {
-                currentAttendanceDates = generateDateRange(start, end);
+            // Build attendance date set: sheet date range + any dates saved in attendance_data
+            const allDates = new Set();
+            const sheetStart = document.getElementById('sheet_start_date')?.value;
+            const sheetEnd   = document.getElementById('sheet_end_date')?.value;
+            if (sheetStart && sheetEnd && sheetEnd >= sheetStart) {
+                generateDateRange(sheetStart, sheetEnd).forEach(d => allDates.add(d));
+            }
+            // Also pull dates from the saved attendance records (handles custom dates and sheets without date range)
+            jobSalarySheetsData.forEach(function(sheet) {
+                const atd = sheet.attendance_data;
+                if (atd && typeof atd === 'object') {
+                    const src = (atd.attendance && typeof atd.attendance === 'object') ? atd.attendance : atd;
+                    Object.keys(src).forEach(function(d) {
+                        if (/^\d{4}-\d{2}-\d{2}$/.test(d)) allDates.add(d);
+                    });
+                }
+            });
+            if (allDates.size > 0) {
+                currentAttendanceDates = Array.from(allDates).sort();
                 updateAttendanceHeaders(currentAttendanceDates);
+                // Auto-fill start/end date inputs if they are blank (DB value was null)
+                const startInput = document.getElementById('sheet_start_date');
+                const endInput   = document.getElementById('sheet_end_date');
+                if (startInput && !startInput.value) startInput.value = currentAttendanceDates[0];
+                if (endInput   && !endInput.value)   endInput.value   = currentAttendanceDates[currentAttendanceDates.length - 1];
             }
             loadPositionSalaryRules().then(() => {
                 loadExistingSalarySheetsFromData(jobSalarySheetsData);
@@ -4829,9 +4719,7 @@ function addPromoterRowFromJson(rowData, index) {
     if (currentAttendanceDates && currentAttendanceDates.length > 0) {
         attendanceInputs = currentAttendanceDates.map(date => {
             const attendanceValue = rowData.attendance && rowData.attendance[date] !== undefined ? rowData.attendance[date] : 0;
-            return date === 'days_count'
-                ? `<input type="number" class="table-input-small" name="rows[${index + 1}][attendance][days_count]" min="0" step="1" onchange="calculateRowTotal(${index + 1})" placeholder="Days" value="${attendanceValue || ''}">`
-                : `<input type="number" class="table-input-small" name="rows[${index + 1}][attendance][${date}]" min="0" max="1" step="1" onchange="calculateRowTotal(${index + 1})" placeholder="0/1" value="${attendanceValue}">`;
+            return `<input type="number" class="table-input-small" name="rows[${index + 1}][attendance][${date}]" min="0" max="1" step="1" onchange="calculateRowTotal(${index + 1})" placeholder="0/1" value="${attendanceValue}">`;
         }).join('');
     }
     // If no dates, don't add any attendance inputs (empty columns)
@@ -4884,7 +4772,7 @@ function addPromoterRowFromJson(rowData, index) {
         <td id="attendanceCell-${index + 1}" style="display: table-cell; width: ${attendanceWidth}px;">
             <div style="display: grid; grid-template-columns: repeat(${numDates}, 1fr) 1fr 1.5fr; gap: 0.75rem; width: ${attendanceWidth}px;">
                 ${attendanceInputs}
-                <input type="number" class="table-input-small calculated-cell" name="rows[${index + 1}][attendance_total]" readonly value="${rowData.attendance_total || 0}">
+                <input type="number" class="table-input-small" name="rows[${index + 1}][attendance_total]" min="0" step="0.1" placeholder="0" value="${rowData.attendance_total || 0}" oninput="onAttendanceTotalManualChange(${index + 1}, this)">
                 <input type="number" step="0.01" class="table-input-small" name="rows[${index + 1}][attendance_amount]" title="Attendance Amount (Auto-calculated, but editable)" value="${rowData.attendance_amount || 0}" oninput="calculateNetAmount(${index + 1})">
             </div>
         </td>
@@ -6483,137 +6371,55 @@ function openAddCustomDateModal() {
         return;
     }
 
-    // Check if end date exists - custom dates can only be added when end date is null
-    const endDate = jobHiddenInput.getAttribute('data-end-date');
-    const hasEndDate = endDate && endDate !== 'null' && endDate !== '';
-
-    if (hasEndDate) {
-        Swal.fire({
-            icon: 'info',
-            title: 'Custom Dates Not Allowed',
-            text: 'Custom dates can only be added when the job has no ending date.',
-        });
-        return;
-    }
-
     if (modal) {
         modal.style.display = 'block';
         document.getElementById('customDateInput').value = '';
         document.getElementById('customDateError').style.display = 'none';
         document.getElementById('customDateError').textContent = '';
-        cdmSwitchMode('single'); // always open on Single Date tab
     }
 }
 
-let _cdmMode = 'single'; // 'single' | 'range'
-
-function cdmSwitchMode(mode) {
-    _cdmMode = mode;
-    const tabSingle   = document.getElementById('cdm-tab-single');
-    const tabRange    = document.getElementById('cdm-tab-range');
-    const panelSingle = document.getElementById('cdm-panel-single');
-    const panelRange  = document.getElementById('cdm-panel-range');
-    const btnLabel    = document.getElementById('addCustomDateBtnModal');
-    if (mode === 'single') {
-        tabSingle.style.cssText += 'background:#4f46e5;color:#fff;border-color:#4f46e5;';
-        tabRange.style.cssText  += 'background:#f9fafb;color:#6b7280;border-color:#e5e7eb;';
-        panelSingle.style.display = '';
-        panelRange.style.display  = 'none';
-        if (btnLabel) btnLabel.textContent = 'Add Date';
-    } else {
-        tabRange.style.cssText  += 'background:#4f46e5;color:#fff;border-color:#4f46e5;';
-        tabSingle.style.cssText += 'background:#f9fafb;color:#6b7280;border-color:#e5e7eb;';
-        panelSingle.style.display = 'none';
-        panelRange.style.display  = '';
-        if (btnLabel) btnLabel.textContent = 'Add Days Column';
-        cdmUpdatePreview();
-    }
-    const errorDiv = document.getElementById('customDateError');
-    if (errorDiv) { errorDiv.style.display = 'none'; errorDiv.textContent = ''; }
-}
-
-function cdmUpdatePreview() {
-    const preview  = document.getElementById('cdm-preview');
-    const countVal = parseInt(document.getElementById('cdm-day-count').value, 10);
-    if (!preview) return;
-    if (!countVal || countVal < 1) { preview.style.display = 'none'; return; }
-    const alreadyExists = currentAttendanceDates.includes('days_count');
-    if (alreadyExists) {
-        preview.innerHTML = '<span style="color:#b45309;">A "Days" column already exists. Remove it first to change the count.</span>';
-    } else {
-        preview.innerHTML = `Adds a single <strong>Days</strong> column — enter each promoter's total days worked (max&nbsp;<strong>${countVal}</strong>).`;
-    }
-    preview.style.display = 'block';
-}
 
 function closeAddCustomDateModal() {
     const modal = document.getElementById('addCustomDateModal');
     if (modal) {
         modal.style.display = 'none';
         document.getElementById('customDateInput').value = '';
-        const countEl = document.getElementById('cdm-day-count');
-        if (countEl) countEl.value = '';
-        const preview = document.getElementById('cdm-preview');
-        if (preview) preview.style.display = 'none';
         document.getElementById('customDateError').style.display = 'none';
         document.getElementById('customDateError').textContent = '';
     }
 }
 
 function addCustomDateToAttendance() {
+    const dateInput = document.getElementById('customDateInput');
     const errorDiv = document.getElementById('customDateError');
-    errorDiv.style.display = 'none';
-    errorDiv.textContent = '';
+    const selectedDate = dateInput.value;
 
-    if (_cdmMode === 'range') {
-        // ---- Day count mode: single "Days" column ----
-        const countVal = parseInt(document.getElementById('cdm-day-count').value, 10);
-        if (!countVal || countVal < 1) {
-            errorDiv.textContent = 'Please enter a number of days (minimum 1).';
-            errorDiv.style.display = 'block'; return;
-        }
-        if (currentAttendanceDates.includes('days_count')) {
-            errorDiv.textContent = 'A "Days" column already exists. Remove it first before adding a new one.';
-            errorDiv.style.display = 'block'; return;
-        }
-        // Store max on the key element so the row input can reference it
-        window._daysCountMax = countVal;
-        currentAttendanceDates.push('days_count');
-        addDateColumnToAllRows('days_count');
-        updateAttendanceHeaders(currentAttendanceDates);
-        closeAddCustomDateModal();
-        Swal.fire({
-            icon: 'success',
-            title: 'Days Column Added',
-            text: `A "Days" column has been added (max ${countVal} days per promoter).`,
-            timer: 1800,
-            showConfirmButton: false
-        });
-    } else {
-        // ---- Single date mode ----
-        const dateInput    = document.getElementById('customDateInput');
-        const selectedDate = dateInput.value;
-        if (!selectedDate) {
-            errorDiv.textContent = 'Please select a date.';
-            errorDiv.style.display = 'block'; return;
-        }
-        if (currentAttendanceDates.includes(selectedDate)) {
-            errorDiv.textContent = 'This date is already in the attendance table.';
-            errorDiv.style.display = 'block'; return;
-        }
-        currentAttendanceDates.push(selectedDate);
-        currentAttendanceDates.sort();
-        updateAttendanceHeaders(currentAttendanceDates);
-        addDateColumnToAllRows(selectedDate);
-        closeAddCustomDateModal();
-        Swal.fire({
-            icon: 'success',
-            title: 'Date Added',
-            text: `Date ${selectedDate} has been added to the attendance table.`,
-            timer: 1500,
-            showConfirmButton: false
-        });
+    if (!selectedDate) {
+        errorDiv.textContent = 'Please select a date.';
+        errorDiv.style.display = 'block';
+        return;
     }
+
+    if (currentAttendanceDates.includes(selectedDate)) {
+        errorDiv.textContent = 'This date is already in the attendance table.';
+        errorDiv.style.display = 'block';
+        return;
+    }
+
+    currentAttendanceDates.push(selectedDate);
+    currentAttendanceDates.sort();
+    updateAttendanceHeaders(currentAttendanceDates);
+    addDateColumnToAllRows(selectedDate);
+    closeAddCustomDateModal();
+
+    Swal.fire({
+        icon: 'success',
+        title: 'Date Added',
+        text: `Date ${selectedDate} has been added to the attendance table.`,
+        timer: 1500,
+        showConfirmButton: false
+    });
 }
 
 function addDateColumnToAllRows(newDate) {
@@ -6661,23 +6467,17 @@ function addDateColumnToAllRows(newDate) {
                     gridContainer.appendChild(input);
                 });
 
-                // Re-add Total input
-                if (totalInput) {
-                    const newTotalInput = document.createElement('input');
-                    newTotalInput.type = 'number';
-                    newTotalInput.className = 'table-input-small calculated-cell';
-                    newTotalInput.name = totalInput.name;
-                    newTotalInput.readOnly = true;
-                    newTotalInput.value = totalInput.value || '';
-                    gridContainer.appendChild(newTotalInput);
-                } else {
-                    const totalInputNew = document.createElement('input');
-                    totalInputNew.type = 'number';
-                    totalInputNew.className = 'table-input-small calculated-cell';
-                    totalInputNew.name = `rows[${rowNum}][attendance_total]`;
-                    totalInputNew.readOnly = true;
-                    gridContainer.appendChild(totalInputNew);
-                }
+                // Re-add Total input (editable)
+                const newTotalInput = document.createElement('input');
+                newTotalInput.type = 'number';
+                newTotalInput.className = 'table-input-small';
+                newTotalInput.min = '0';
+                newTotalInput.step = '0.1';
+                newTotalInput.placeholder = '0';
+                newTotalInput.name = totalInput ? totalInput.name : `rows[${rowNum}][attendance_total]`;
+                newTotalInput.value = totalInput ? (totalInput.value || '') : '';
+                newTotalInput.oninput = function() { onAttendanceTotalManualChange(rowNum, this); };
+                gridContainer.appendChild(newTotalInput);
 
                 // Re-add Amount input
                 if (amountInput) {

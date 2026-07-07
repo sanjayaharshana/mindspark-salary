@@ -56,6 +56,7 @@ class PromoterController extends Controller
                     'phone_no' => $p->phone_no,
                     'identity_card_no' => $p->identity_card_no,
                     'bank_name' => $p->bank_name,
+                    'bank_branch_name' => $p->bank_branch_name,
                     'bank_account_number' => $p->bank_account_number,
                     'status' => $p->status,
                 ];
