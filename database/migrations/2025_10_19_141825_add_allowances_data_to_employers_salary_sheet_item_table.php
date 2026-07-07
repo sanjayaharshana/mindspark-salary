@@ -11,9 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('employers_salary_sheet_item', function (Blueprint $table) {
-            $table->json('allowances_data')->nullable()->after('coordinator_details');
-        });
+        if (!Schema::hasColumn('employers_salary_sheet_item', 'allowances_data')) {
+            Schema::table('employers_salary_sheet_item', function (Blueprint $table) {
+                $table->json('allowances_data')->nullable()->after('coordinator_details');
+            });
+        }
     }
 
     /**

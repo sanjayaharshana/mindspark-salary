@@ -11,10 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('salary_sheet', function (Blueprint $table) {
-            $table->unsignedBigInteger('created_by')->nullable()->after('notes');
-            $table->foreign('created_by')->references('id')->on('users')->onDelete('set null');
-        });
+        if (!Schema::hasColumn('salary_sheet', 'created_by')) {
+            Schema::table('salary_sheet', function (Blueprint $table) {
+                $table->unsignedBigInteger('created_by')->nullable()->after('notes');
+                $table->foreign('created_by')->references('id')->on('users')->onDelete('set null');
+            });
+        }
     }
 
     /**
