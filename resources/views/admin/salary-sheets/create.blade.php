@@ -1191,10 +1191,16 @@ function scLoadSheet(sheetId) {
                 }
                 setTimeout(() => {
                     document.querySelectorAll('#promoterRows tr').forEach((row, i) => {
-                        const n = i + 1, tot = Array.from(row.querySelectorAll('input[name*="[attendance]["]'))
-                            .reduce((s, inp) => s + (parseFloat(inp.value) || 0), 0);
-                        const ti = row.querySelector(`input[name="rows[${n}][attendance_total]"]`);
-                        if (ti) ti.value = tot;
+                        const n = i + 1;
+                        // Only overwrite attendance_total from date checkboxes when date columns exist.
+                        // When there are no date columns the total was manually entered and already
+                        // loaded from the JSON — overwriting it with 0 would lose the saved value.
+                        if (currentAttendanceDates && currentAttendanceDates.length > 0) {
+                            const tot = Array.from(row.querySelectorAll('input[name*="[attendance]["]'))
+                                .reduce((s, inp) => s + (parseFloat(inp.value) || 0), 0);
+                            const ti = row.querySelector(`input[name="rows[${n}][attendance_total]"]`);
+                            if (ti) ti.value = tot;
+                        }
                         calculateRowNet(n);
                     });
                     calculateGrandTotal();
@@ -3497,6 +3503,33 @@ function calculateRowTotal(rowNum) {
 
 function onAttendanceTotalManualChange(rowNum, input) {
     const total = parseFloat(input.value) || 0;
+
+    // Clear flags that block recalculation — same as calculateRowTotal does for date checkboxes.
+    // When the user explicitly types a total they expect payment columns to update.
+    const _row = document.querySelector(`tr:has(input[name="rows[${rowNum}][amount]"])`);
+    if (_row) {
+        const _amt = _row.querySelector(`input[name="rows[${rowNum}][amount]"]`);
+        if (_amt) {
+            _amt.removeAttribute('data-custom-amount');
+            _amt.removeAttribute('data-manually-edited');
+            _amt.removeAttribute('data-loaded-from-db');
+            _amt.setAttribute('data-attendance-updated', 'true');
+        }
+        const _fee = _row.querySelector(`input[name="rows[${rowNum}][coordination_fee]"]`);
+        if (_fee) {
+            _fee.removeAttribute('data-custom-coordination-fee');
+            _fee.removeAttribute('data-manually-edited');
+            _fee.removeAttribute('data-loaded-from-db');
+            _fee.setAttribute('data-attendance-updated', 'true');
+        }
+        _row.querySelectorAll(`input[name^="rows[${rowNum}][allowances]"]`).forEach(function(inp) {
+            inp.removeAttribute('data-custom-allowance');
+            inp.removeAttribute('data-manually-edited');
+            inp.removeAttribute('data-loaded-from-db');
+            inp.setAttribute('data-attendance-updated', 'true');
+        });
+    }
+
     calculateAttendanceAmount(rowNum, total).then(() => {
         calculateAllowances(rowNum, total);
         applyJobSettingsToRow(rowNum);
