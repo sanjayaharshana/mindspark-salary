@@ -4895,20 +4895,20 @@ function addPromoterRowFromJson(rowData, index) {
             updateCoordinatorDisplay(index + 1, coordinatorSelect);
         }
 
-        // When loading existing data, DON'T recalculate attendance amounts - preserve the saved custom amounts
-        // Only calculate attendance total (count of present days)
-        let total = 0;
-        const attendanceInputs = row.querySelectorAll('input[name*="[attendance]["]');
-        attendanceInputs.forEach(input => {
-            const name = input.name;
-            // Only count actual attendance inputs, not the total/amount inputs
-            if (name.includes('[attendance][') && !name.includes('[attendance_total]') && !name.includes('[attendance_amount]')) {
-                total += parseFloat(input.value) || 0;
-            }
-        });
-        const totalInput = row.querySelector(`input[name="rows[${index + 1}][attendance_total]"]`);
-        if (totalInput) {
-            totalInput.value = total.toFixed(1);
+        // Recalculate attendance total from date checkboxes ONLY when date columns exist.
+        // When there are no date columns the total is manually entered and was already
+        // set from the loaded JSON — overwriting it with 0 would erase the saved value.
+        if (currentAttendanceDates && currentAttendanceDates.length > 0) {
+            let total = 0;
+            const attendanceInputs = row.querySelectorAll('input[name*="[attendance]["]');
+            attendanceInputs.forEach(input => {
+                const name = input.name;
+                if (name.includes('[attendance][') && !name.includes('[attendance_total]') && !name.includes('[attendance_amount]')) {
+                    total += parseFloat(input.value) || 0;
+                }
+            });
+            const totalInput = row.querySelector(`input[name="rows[${index + 1}][attendance_total]"]`);
+            if (totalInput) totalInput.value = total.toFixed(1);
         }
 
         // Mark amount and expenses as custom when loading from database (to prevent overwriting)
