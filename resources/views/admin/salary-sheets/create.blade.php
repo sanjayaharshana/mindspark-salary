@@ -3341,8 +3341,9 @@ function updatePositionFromDropdown(rowNum, selectElement) {
         // Get position salary from salary rules
         const positionSalary = getPositionSalary(positionId);
 
-        // Calculate attendance amount: position salary × present days
+        // Attendance amount = salary × days; effective amount uses base salary when no days yet
         const attendanceAmount = positionSalary * presentDays;
+        const effectiveAmount = (presentDays > 0) ? attendanceAmount : positionSalary;
 
         // Update attendance amount field
         const attendanceAmountInput = row.querySelector(`input[name="rows[${rowNum}][attendance_amount]"]`);
@@ -3351,7 +3352,7 @@ function updatePositionFromDropdown(rowNum, selectElement) {
             attendanceAmountInput.dataset.lastCalculatedAmount = attendanceAmount.toFixed(2);
         }
 
-        // Update payment amount field (basic salary) with the same value
+        // Update payment amount field with effective amount (base salary when no days yet)
         const paymentAmountInput = row.querySelector(`input[name="rows[${rowNum}][amount]"]`);
         if (paymentAmountInput) {
             const currentAmount = parseFloat(paymentAmountInput.value) || 0;
@@ -3359,10 +3360,9 @@ function updatePositionFromDropdown(rowNum, selectElement) {
             const loadedFromDb = paymentAmountInput.dataset.loadedFromDb === 'true';
             const manuallyEdited = paymentAmountInput.dataset.manuallyEdited === 'true';
 
-            // Only update if it's not manually edited, not loaded from DB, or is empty
             if (!hasCustomAmount && !loadedFromDb && !manuallyEdited || currentAmount === 0) {
-                paymentAmountInput.value = attendanceAmount.toFixed(2);
-                paymentAmountInput.dataset.lastSyncedAmount = attendanceAmount.toFixed(2);
+                paymentAmountInput.value = effectiveAmount.toFixed(2);
+                paymentAmountInput.dataset.lastSyncedAmount = effectiveAmount.toFixed(2);
             }
         }
 
@@ -3625,19 +3625,22 @@ async function calculateAttendanceAmount(rowNum, presentDays) {
 
     // Find promoter in the promoters array to get position ID
     const promoter = promoters.find(p => p.id == promoterId);
-    if (!promoter || !promoter.position_id) {
+
+    // Check if a position is selected from the row's dropdown (user may have assigned one manually)
+    const positionSelect = row.querySelector(`select[name="rows[${rowNum}][position_id]"]`);
+    const dropdownPositionId = positionSelect?.value && positionSelect.value !== 'custom' ? positionSelect.value : null;
+
+    if (!promoter || (!promoter.position_id && !dropdownPositionId)) {
         const attendanceAmountInput = row.querySelector(`input[name="rows[${rowNum}][attendance_amount]"]`);
         if (attendanceAmountInput) {
             attendanceAmountInput.value = '0.00';
         }
 
-        // Also clear payment amount field
         const paymentAmountInput = row.querySelector(`input[name="rows[${rowNum}][amount]"]`);
         if (paymentAmountInput) {
             paymentAmountInput.value = '0.00';
         }
 
-        // Clear coordinator fee when promoter not found
         const coordinationFeeInput = row.querySelector(`input[name="rows[${rowNum}][coordination_fee]"]`);
         if (coordinationFeeInput) {
             coordinationFeeInput.value = '0.00';
@@ -3654,20 +3657,18 @@ async function calculateAttendanceAmount(rowNum, presentDays) {
         await loadPositionSalaryRules();
     }
 
-    // Get position ID from dropdown (if available) or from promoter
-    const positionSelect = row.querySelector(`select[name="rows[${rowNum}][position_id]"]`);
-    let positionId = null;
-    if (positionSelect && positionSelect.value) {
-        positionId = positionSelect.value;
-    } else if (promoter && promoter.position_id) {
-        positionId = promoter.position_id;
-    }
+    // Position from dropdown takes priority over promoter's default position
+    let positionId = dropdownPositionId || (promoter ? promoter.position_id : null);
 
     // Get position salary from loaded rules
     const positionSalary = getPositionSalary(positionId);
 
     // Calculate attendance amount: position salary × present days
     const attendanceAmount = positionSalary * presentDays;
+
+    // When no attendance days are recorded yet, use the base salary as the payment amount
+    // so the user can see the salary from rules immediately after assigning a position.
+    const effectiveAmount = (presentDays > 0) ? attendanceAmount : positionSalary;
 
     // Update the attendance amount field (always update this as it's calculated)
     const attendanceAmountInput = row.querySelector(`input[name="rows[${rowNum}][attendance_amount]"]`);
@@ -3693,15 +3694,9 @@ async function calculateAttendanceAmount(rowNum, presentDays) {
         const manuallyEdited = paymentAmountInput.dataset.manuallyEdited === 'true';
         const attendanceUpdated = paymentAmountInput.dataset.attendanceUpdated === 'true';
 
-        // Force update if attendance was just updated (custom amount should be cleared)
-        // OR update if:
-        // 1. Amount is empty/zero, OR
-        // 2. Amount matches the previously synced amount (meaning it was auto-synced, not manually edited)
-        // AND it doesn't have the custom-amount flag, wasn't loaded from DB, and wasn't manually edited
         if (attendanceUpdated || ((currentAmount === 0 || currentAmount === previousSyncedAmount) && !hasCustomAmount && !loadedFromDb && !manuallyEdited)) {
-            paymentAmountInput.value = attendanceAmount.toFixed(2);
-            paymentAmountInput.dataset.lastSyncedAmount = attendanceAmount.toFixed(2);
-            // Clear the attendance updated flag after updating
+            paymentAmountInput.value = effectiveAmount.toFixed(2);
+            paymentAmountInput.dataset.lastSyncedAmount = effectiveAmount.toFixed(2);
             if (attendanceUpdated) {
                 paymentAmountInput.removeAttribute('data-attendance-updated');
             }
