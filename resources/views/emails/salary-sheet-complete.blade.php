@@ -59,10 +59,42 @@
             text-decoration: none;
             border-radius: 0.5rem;
             font-weight: 600;
-            transition: background-color 0.2s;
+            margin: 0 0.5rem;
         }
-        .button:hover {
-            background-color: #2563eb;
+        .button-approve {
+            display: inline-block;
+            padding: 0.75rem 2.5rem;
+            background-color: #10b981;
+            color: #ffffff;
+            text-decoration: none;
+            border-radius: 0.5rem;
+            font-weight: 700;
+            font-size: 1rem;
+            margin: 0 0.5rem;
+        }
+        .approve-section {
+            background: #f0fdf4;
+            border: 2px solid #10b981;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            text-align: center;
+            margin: 1.5rem 0;
+        }
+        .approve-section h3 {
+            color: #065f46;
+            margin: 0 0 0.5rem 0;
+            font-size: 1.1rem;
+        }
+        .approve-section p {
+            color: #047857;
+            margin: 0 0 1rem 0;
+            font-size: 0.9rem;
+        }
+        .link-note {
+            color: #9ca3af;
+            font-size: 0.75rem;
+            margin-top: 0.75rem;
+            word-break: break-all;
         }
         .email-footer {
             background-color: #f9fafb;
@@ -136,14 +168,23 @@
                 </tr>
             </table>
 
+            <div class="approve-section">
+                <h3>&#10003; Approve This Salary Sheet</h3>
+                <p>Click the button below to approve this salary sheet. No login is required.</p>
+                <a href="{{ $approveUrl }}" class="button-approve">
+                    Approve Salary Sheet
+                </a>
+                <p class="link-note">This approval link is valid for 7 days.</p>
+            </div>
+
             <div class="button-container">
                 <a href="{{ route('admin.salary-sheets.show', $salarySheet) }}" class="button">
-                    Review Salary Sheet
+                    View Full Details
                 </a>
             </div>
 
-            <p style="color: #6b7280; font-size: 0.875rem; margin-top: 2rem;">
-                Please review the salary sheet and take appropriate action. The salary sheet is currently in "Complete" status and awaiting your approval.
+            <p style="color: #6b7280; font-size: 0.875rem; margin-top: 1rem;">
+                The salary sheet is in <strong>"Complete"</strong> status and awaiting your approval. Click "Approve Salary Sheet" above to confirm.
             </p>
         </div>
 

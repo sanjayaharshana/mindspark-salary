@@ -49,6 +49,11 @@ Route::get('/debug/oauth', function () {
     ]);
 });
 
+// Email-based salary sheet approval (no login required, signed URL only)
+Route::get('/salary-sheets/{salarySheet}/email-approve', [SalarySheetController::class, 'approveViaEmail'])
+    ->name('salary-sheets.email-approve')
+    ->middleware('signed');
+
 // Admin routes
 Route::middleware('auth')->group(function () {
     Route::get('/admin/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');

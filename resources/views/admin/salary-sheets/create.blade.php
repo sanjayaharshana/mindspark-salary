@@ -6156,11 +6156,16 @@ document.addEventListener('click', function(e) {
                         <select id="salarySheetStatusSelect" class="form-control" style="width: 100%;" onchange="updateStatusDescription()">
                             <option value="">Select Status</option>
                             <option value="draft">Draft</option>
-                            <option value="complete">Complete</option>
+                            <option value="complete" {{ !isset($editSalarySheet) ? 'selected' : '' }}>Complete</option>
                             <option value="reject">Reject</option>
                             <option value="approve">Approve</option>
                             <option value="paid">Paid</option>
                         </select>
+                        @if(!isset($editSalarySheet))
+                        <p style="margin-top:0.4rem;font-size:0.78rem;color:#10b981;">
+                            &#9432; Saving as <strong>Complete</strong> will email the reporter for approval.
+                        </p>
+                        @endif
                     </div>
                 </div>
 

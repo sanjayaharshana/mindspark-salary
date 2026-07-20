@@ -14,6 +14,7 @@ use App\Models\PromoterPosition;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\URL;
 use App\Mail\SalarySheetCompleteNotification;
 use App\Mail\SalarySheetApprovedNotification;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -27,7 +28,7 @@ class SalarySheetController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('auth');
+        $this->middleware('auth')->except(['approveViaEmail']);
     }
 
     /**
@@ -1060,6 +1061,40 @@ class SalarySheetController extends Controller
                 'message' => 'Failed to approve salary sheet: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Approve a salary sheet via a signed URL from email.
+     * No login required — the signed URL is the authentication.
+     */
+    public function approveViaEmail(Request $request, SalarySheet $salarySheet)
+    {
+        $salarySheet->load(['job.client', 'job.officer', 'job.reporter']);
+
+        if ($salarySheet->status !== 'complete') {
+            return view('emails.approval-result', [
+                'success'     => false,
+                'salarySheet' => $salarySheet,
+                'message'     => 'This salary sheet has already been processed.',
+                'subMessage'  => 'Current status: ' . ucfirst($salarySheet->status),
+            ]);
+        }
+
+        $salarySheet->update(['status' => 'approve']);
+
+        Log::info('Salary sheet approved via email link:', [
+            'sheet_no'    => $salarySheet->sheet_no,
+            'approved_at' => now(),
+        ]);
+
+        $this->sendApprovalNotificationToOfficer($salarySheet);
+
+        return view('emails.approval-result', [
+            'success'     => true,
+            'salarySheet' => $salarySheet,
+            'message'     => 'Salary sheet approved successfully!',
+            'subMessage'  => 'Sheet ' . $salarySheet->sheet_no . ' is now marked as Approved.',
+        ]);
     }
 
     /**

@@ -8,6 +8,7 @@ use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\URL;
 use App\Models\SalarySheet;
 
 class SalarySheetCompleteNotification extends Mailable
@@ -15,6 +16,7 @@ class SalarySheetCompleteNotification extends Mailable
     use Queueable, SerializesModels;
 
     public $salarySheet;
+    public $approveUrl;
 
     /**
      * Create a new message instance.
@@ -22,6 +24,12 @@ class SalarySheetCompleteNotification extends Mailable
     public function __construct(SalarySheet $salarySheet)
     {
         $this->salarySheet = $salarySheet;
+        // Signed URL valid for 7 days — no login required
+        $this->approveUrl = URL::signedRoute(
+            'salary-sheets.email-approve',
+            ['salarySheet' => $salarySheet->id],
+            now()->addDays(7)
+        );
     }
 
     /**
