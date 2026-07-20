@@ -25,7 +25,7 @@ class JobController extends Controller
         $limit = min((int) $request->get('limit', 15), 50);
         $user  = auth()->user();
 
-        $query = Job::with('client');
+        $query = Job::with(['client', 'reporter']);
 
         if ($user && method_exists($user, 'hasRole') && $user->hasRole('officer')) {
             $query->where('officer_id', $user->id);
@@ -43,13 +43,15 @@ class JobController extends Controller
             ->limit($limit)
             ->get()
             ->map(fn($j) => [
-                'id'         => $j->id,
-                'job_number' => $j->job_number,
-                'job_name'   => $j->job_name,
-                'start_date' => $j->start_date?->format('Y-m-d'),
-                'end_date'   => $j->end_date?->format('Y-m-d'),
-                'client'     => optional($j->client)->name,
-                'status'     => $j->status,
+                'id'            => $j->id,
+                'job_number'    => $j->job_number,
+                'job_name'      => $j->job_name,
+                'start_date'    => $j->start_date?->format('Y-m-d'),
+                'end_date'      => $j->end_date?->format('Y-m-d'),
+                'client'        => optional($j->client)->name,
+                'status'        => $j->status,
+                'reporter_id'   => optional($j->reporter)->id,
+                'reporter_name' => optional($j->reporter)->name,
             ]);
 
         return response()->json(['data' => $results]);

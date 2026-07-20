@@ -619,7 +619,9 @@ body.sc-fullscreen .sc-status-btn { height: 29px; font-size: .78rem; padding: 0 
         <input type="hidden" id="job_id" name="job_id"
                value="{{ isset($editSalarySheet) ? $editSalarySheet->job_id : '' }}"
                data-start-date="{{ isset($editSalarySheet) && $editSalarySheet->job ? $editSalarySheet->job->start_date : '' }}"
-               data-end-date="{{ isset($editSalarySheet) && $editSalarySheet->job ? $editSalarySheet->job->end_date : '' }}">
+               data-end-date="{{ isset($editSalarySheet) && $editSalarySheet->job ? $editSalarySheet->job->end_date : '' }}"
+               data-reporter-id="{{ isset($editSalarySheet) && $editSalarySheet->job && $editSalarySheet->job->reporter ? $editSalarySheet->job->reporter->id : '' }}"
+               data-reporter-name="{{ isset($editSalarySheet) && $editSalarySheet->job && $editSalarySheet->job->reporter ? $editSalarySheet->job->reporter->name : '' }}">
         {{-- Visible: AJAX search text field --}}
         <input type="text" class="sc-info-input" id="job_search_input"
                autocomplete="off"
@@ -722,7 +724,7 @@ body.sc-fullscreen .sc-status-btn { height: 29px; font-size: .78rem; padding: 0 
 
     {{-- Save / Update actions --}}
     @if(isset($editSalarySheet))
-        <button type="button" class="sc-btn sc-btn-solid" onclick="document.getElementById('salarySheetForm').submit()">
+        <button type="button" class="sc-btn sc-btn-solid" onclick="submitUpdateSalarySheet()">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
             Update Sheet
         </button>
@@ -1230,8 +1232,15 @@ function handleJobSearchInput(el) {
     if (!el.value.trim()) {
         // user cleared the field — clear hidden value and session
         const hidden = document.getElementById('job_id');
-        if (hidden) { hidden.value = ''; hidden.setAttribute('data-start-date',''); hidden.setAttribute('data-end-date',''); }
-        try { ['sc_job_id','sc_job_number','sc_job_name','sc_job_start','sc_job_end'].forEach(k => sessionStorage.removeItem(k)); } catch(e) {}
+        if (hidden) {
+            hidden.value = '';
+            hidden.setAttribute('data-start-date','');
+            hidden.setAttribute('data-end-date','');
+            hidden.setAttribute('data-reporter-id','');
+            hidden.setAttribute('data-reporter-name','');
+        }
+        try { ['sc_job_id','sc_job_number','sc_job_name','sc_job_start','sc_job_end','sc_job_reporter_id','sc_job_reporter_name'].forEach(k => sessionStorage.removeItem(k)); } catch(e) {}
+        if (typeof updateReporterFieldVisibility === 'function') updateReporterFieldVisibility();
     }
     _jobSearchTimer = setTimeout(() => searchJobs(el.value.trim()), 220);
 }
@@ -1283,6 +1292,8 @@ function searchJobs(q) {
                  data-name="${(j.job_name||'').replace(/"/g,'&quot;')}"
                  data-start="${j.start_date || ''}"
                  data-end="${j.end_date || ''}"
+                 data-reporter-id="${j.reporter_id || ''}"
+                 data-reporter-name="${(j.reporter_name||'').replace(/"/g,'&quot;')}"
                  onmousedown="selectJob(this)">
                 <div class="sc-job-item-num">${j.job_number}</div>
                 <div class="sc-job-item-name">${j.job_name || ''}</div>
@@ -1300,6 +1311,8 @@ function selectJob(el) {
     hidden.value  = el.dataset.id;
     hidden.setAttribute('data-start-date', el.dataset.start || '');
     hidden.setAttribute('data-end-date',   el.dataset.end   || '');
+    hidden.setAttribute('data-reporter-id',   el.dataset.reporterId   || '');
+    hidden.setAttribute('data-reporter-name', el.dataset.reporterName || '');
     textEl.value  = el.dataset.number + ' — ' + el.dataset.name;
     try {
         sessionStorage.setItem('sc_job_id',     el.dataset.id);
@@ -1307,9 +1320,12 @@ function selectJob(el) {
         sessionStorage.setItem('sc_job_name',   el.dataset.name);
         sessionStorage.setItem('sc_job_start',  el.dataset.start || '');
         sessionStorage.setItem('sc_job_end',    el.dataset.end   || '');
+        sessionStorage.setItem('sc_job_reporter_id',   el.dataset.reporterId   || '');
+        sessionStorage.setItem('sc_job_reporter_name', el.dataset.reporterName || '');
     } catch(e) {}
     closeJobSuggestions();
     updateAttendanceDates();
+    if (typeof updateReporterFieldVisibility === 'function') updateReporterFieldVisibility();
 }
 
 function scRestoreJob() {
@@ -1322,6 +1338,8 @@ function scRestoreJob() {
         hidden.value = id;
         hidden.setAttribute('data-start-date', sessionStorage.getItem('sc_job_start') || '');
         hidden.setAttribute('data-end-date',   sessionStorage.getItem('sc_job_end')   || '');
+        hidden.setAttribute('data-reporter-id',   sessionStorage.getItem('sc_job_reporter_id')   || '');
+        hidden.setAttribute('data-reporter-name', sessionStorage.getItem('sc_job_reporter_name') || '');
         const num  = sessionStorage.getItem('sc_job_number') || '';
         const name = sessionStorage.getItem('sc_job_name')   || '';
         if (textEl) textEl.value = (num && name) ? num + ' — ' + name : num || name;
@@ -6153,7 +6171,7 @@ document.addEventListener('click', function(e) {
                     <!-- Salary Sheet Status -->
                     <div>
                         <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">Salary Sheet Status</label>
-                        <select id="salarySheetStatusSelect" class="form-control" style="width: 100%;" onchange="updateStatusDescription()">
+                        <select id="salarySheetStatusSelect" class="form-control" style="width: 100%;" onchange="updateStatusDescription(); updateReporterFieldVisibility();">
                             <option value="">Select Status</option>
                             <option value="draft">Draft</option>
                             <option value="complete" {{ !isset($editSalarySheet) ? 'selected' : '' }}>Complete</option>
@@ -6167,6 +6185,18 @@ document.addEventListener('click', function(e) {
                         </p>
                         @endif
                     </div>
+                </div>
+
+                <!-- Reporter (shown only when Salary Sheet Status = Complete) -->
+                <div id="reporterFieldWrapper" style="display:none; margin-top: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151;">Send Approval Mail To Reporter</label>
+                    <select id="reporterSelect" class="form-control" style="width: 100%;" onchange="updateReporterFieldVisibility()">
+                        <option value="">-- Use job's assigned reporter --</option>
+                        @foreach($reporters ?? [] as $reporterOption)
+                        <option value="{{ $reporterOption->id }}">{{ $reporterOption->name }}</option>
+                        @endforeach
+                    </select>
+                    <p id="reporterFieldHint" style="margin-top:0.4rem;font-size:0.78rem;color:#6b7280;"></p>
                 </div>
 
                 <!-- Status Description -->
@@ -6193,6 +6223,67 @@ document.addEventListener('click', function(e) {
 </div>
 
 <script>
+window.__reportersList = @json(($reporters ?? collect())->map(fn($r) => ['id' => $r->id, 'name' => $r->name])->values());
+
+// Used by the Edit page's "Update Sheet" button, which submits directly (no status/notes modal).
+// When completing a sheet for a job with no reporter assigned, ask which reporter to notify.
+function submitUpdateSalarySheet() {
+    const form = document.getElementById('salarySheetForm');
+    const statusHidden = document.getElementById('status_hidden');
+    const status = statusHidden ? statusHidden.value : '';
+
+    if (status !== 'complete') {
+        form.submit();
+        return;
+    }
+
+    const jobHidden = document.getElementById('job_id');
+    const jobReporterId = jobHidden ? (jobHidden.dataset.reporterId || '') : '';
+
+    if (jobReporterId) {
+        // Job already has a reporter — submit as-is, backend will notify them.
+        form.submit();
+        return;
+    }
+
+    const options = (window.__reportersList || [])
+        .map(r => `<option value="${r.id}">${r.name}</option>`)
+        .join('');
+
+    Swal.fire({
+        icon: 'warning',
+        title: 'Reporter Not Assigned',
+        html: `
+            <p style="text-align:left;color:#374151;font-size:0.9rem;margin-bottom:0.75rem;">
+                Cannot send reporter approval mail because the job reporter is not assigned.
+                Select a reporter to notify, or save without sending the approval email.
+            </p>
+            <select id="swalReporterSelect" class="swal2-select" style="width:100%;">
+                <option value="">-- Save without sending mail --</option>
+                ${options}
+            </select>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Save',
+        cancelButtonText: 'Cancel',
+        preConfirm: () => document.getElementById('swalReporterSelect').value
+    }).then((result) => {
+        if (!result.isConfirmed) return;
+
+        const reporterId = result.value;
+        if (reporterId) {
+            const existing = form.querySelector('input[name="reporter_id"]');
+            if (existing) existing.remove();
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'reporter_id';
+            input.value = reporterId;
+            form.appendChild(input);
+        }
+        form.submit();
+    });
+}
+
 // Salary Sheet Save Modal Functions
 function openSalarySheetSaveModal() {
     document.getElementById('salarySheetSaveModal').style.display = 'block';
@@ -6202,12 +6293,42 @@ function openSalarySheetSaveModal() {
     document.getElementById('jobStatusSelect').value = '';
     document.getElementById('salarySheetStatusSelect').value = '';
     document.getElementById('saveNotes').value = '';
+    document.getElementById('reporterSelect').value = '';
     updateStatusDescription();
+    updateReporterFieldVisibility();
 }
 
 function closeSalarySheetSaveModal() {
     document.getElementById('salarySheetSaveModal').style.display = 'none';
     document.body.style.overflow = 'auto';
+}
+
+// Show/hide the reporter dropdown depending on the chosen Salary Sheet Status,
+// and hint whether the job already has a reporter assigned.
+function updateReporterFieldVisibility() {
+    const statusSelect = document.getElementById('salarySheetStatusSelect');
+    const wrapper = document.getElementById('reporterFieldWrapper');
+    const hint = document.getElementById('reporterFieldHint');
+    if (!statusSelect || !wrapper) return;
+
+    if (statusSelect.value !== 'complete') {
+        wrapper.style.display = 'none';
+        return;
+    }
+
+    wrapper.style.display = 'block';
+
+    const jobHidden = document.getElementById('job_id');
+    const jobReporterId = jobHidden ? (jobHidden.dataset.reporterId || '') : '';
+    const jobReporterName = jobHidden ? (jobHidden.dataset.reporterName || '') : '';
+
+    if (jobReporterId) {
+        hint.style.color = '#6b7280';
+        hint.textContent = `Job's assigned reporter: ${jobReporterName}. Leave unselected to email them, or pick someone else to send to instead.`;
+    } else {
+        hint.style.color = '#b45309';
+        hint.textContent = "This job has no reporter assigned yet. Select one to send the approval email — it will also be saved as the job's reporter.";
+    }
 }
 
 function updateStatusDescription() {
@@ -6283,6 +6404,7 @@ function confirmSaveSalarySheet() {
     const jobStatus = document.getElementById('jobStatusSelect').value;
     const salarySheetStatus = document.getElementById('salarySheetStatusSelect').value;
     const notes = document.getElementById('saveNotes').value;
+    const reporterId = document.getElementById('reporterSelect').value;
 
     // Validation
     if (!jobStatus) {
@@ -6305,6 +6427,36 @@ function confirmSaveSalarySheet() {
         return;
     }
 
+    // If completing the sheet with no reporter selected and the job has none assigned either,
+    // the approval mail has nowhere to go — warn before saving instead of failing silently.
+    if (salarySheetStatus === 'complete' && !reporterId) {
+        const jobHidden = document.getElementById('job_id');
+        const jobReporterId = jobHidden ? (jobHidden.dataset.reporterId || '') : '';
+
+        if (!jobReporterId) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Reporter Not Assigned',
+                html: 'Cannot send reporter approval mail because the job reporter is not assigned.<br><br>Select a reporter to notify, or save anyway without sending the approval email.',
+                showCancelButton: true,
+                confirmButtonText: 'Select Reporter',
+                cancelButtonText: 'Save Without Sending Mail',
+                reverseButtons: true
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    document.getElementById('reporterSelect').focus();
+                } else {
+                    proceedSaveSalarySheet(jobStatus, salarySheetStatus, notes, reporterId);
+                }
+            });
+            return;
+        }
+    }
+
+    proceedSaveSalarySheet(jobStatus, salarySheetStatus, notes, reporterId);
+}
+
+function proceedSaveSalarySheet(jobStatus, salarySheetStatus, notes, reporterId) {
     // Add hidden inputs to the form
     const form = document.getElementById('salarySheetForm');
 
@@ -6315,9 +6467,11 @@ function confirmSaveSalarySheet() {
     // Remove existing hidden inputs if they exist
     const existingJobStatus = form.querySelector('input[name="job_status"]');
     const existingNotes = form.querySelector('input[name="notes"]');
+    const existingReporter = form.querySelector('input[name="reporter_id"]');
 
     if (existingJobStatus) existingJobStatus.remove();
     if (existingNotes) existingNotes.remove();
+    if (existingReporter) existingReporter.remove();
 
     // Add new hidden inputs
     const jobStatusInput = document.createElement('input');
@@ -6331,6 +6485,14 @@ function confirmSaveSalarySheet() {
     notesInput.name = 'notes';  // Changed from 'save_notes' to 'notes' to match controller
     notesInput.value = notes;
     form.appendChild(notesInput);
+
+    if (salarySheetStatus === 'complete' && reporterId) {
+        const reporterInput = document.createElement('input');
+        reporterInput.type = 'hidden';
+        reporterInput.name = 'reporter_id';
+        reporterInput.value = reporterId;
+        form.appendChild(reporterInput);
+    }
 
     // Close modal
     closeSalarySheetSaveModal();

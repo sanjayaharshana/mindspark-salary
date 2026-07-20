@@ -399,11 +399,11 @@
                 </div>
                 <div class="detail-item">
                     <div class="detail-label">Job Title</div>
-                    <div class="detail-value">{{ $salarySheet->job->job_title ?? 'N/A' }}</div>
+                    <div class="detail-value">{{ $salarySheet->job->job_name ?? 'N/A' }}</div>
                 </div>
                 <div class="detail-item">
                     <div class="detail-label">Client</div>
-                    <div class="detail-value">{{ $salarySheet->job->client->client_name ?? 'N/A' }}</div>
+                    <div class="detail-value">{{ $salarySheet->job->client->name ?? 'N/A' }}</div>
                 </div>
                 <div class="detail-item">
                     <div class="detail-label">Job Period</div>

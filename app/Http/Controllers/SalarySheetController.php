@@ -113,8 +113,9 @@ class SalarySheetController extends Controller
         }
         $jobs = $jobQuery->orderBy('created_at', 'desc')->get();
         $allowances = Allowance::all();
+        $reporters = User::role('reporter')->orderBy('name')->get();
 
-        return view('admin.salary-sheets.create', compact('promoters', 'coordinators', 'jobs', 'allowances'));
+        return view('admin.salary-sheets.create', compact('promoters', 'coordinators', 'jobs', 'allowances', 'reporters'));
     }
 
     /**
@@ -318,7 +319,7 @@ class SalarySheetController extends Controller
             }
         }
 
-        $salarySheet->load(['job.client', 'items.position', 'items.promoter', 'creator']);
+        $salarySheet->load(['job.client', 'job.officer', 'job.reporter', 'items.position', 'items.promoter', 'creator']);
 
         return view('admin.salary-sheets.show', compact('salarySheet'));
     }
@@ -371,7 +372,8 @@ class SalarySheetController extends Controller
                 ->get();
         }
 
-        $salarySheet->load(['job', 'items.position', 'items.promoter']);
+        $salarySheet->load(['job.reporter', 'items.position', 'items.promoter']);
+        $reporters = User::role('reporter')->orderBy('name')->get();
 
         // Build jobSalarySheets for edit: one row per item, in the shape loadSalarySheetAsRow expects
         $jobSalarySheets = $salarySheet->items->map(function ($item) {
@@ -409,7 +411,7 @@ class SalarySheetController extends Controller
         $allowances = Allowance::all();
 
         // Use the same create view for edit so UI and behavior match
-        return view('admin.salary-sheets.create', compact('salarySheet', 'promoters', 'coordinators', 'jobs', 'jobSalarySheets', 'allowances') + ['editSalarySheet' => $salarySheet]);
+        return view('admin.salary-sheets.create', compact('salarySheet', 'promoters', 'coordinators', 'jobs', 'jobSalarySheets', 'allowances', 'reporters') + ['editSalarySheet' => $salarySheet]);
     }
 
     /**
@@ -437,6 +439,7 @@ class SalarySheetController extends Controller
             'status' => 'required|in:draft,complete,reject,paid,approve',
             'location' => 'nullable|string|max:255',
             'notes' => 'nullable|string|max:1000',
+            'reporter_id' => 'nullable|exists:users,id',
         ]);
 
         if ($validator->fails()) {
@@ -471,9 +474,10 @@ class SalarySheetController extends Controller
                 'notes'      => $request->notes,
             ]);
 
-            // Send email to admin, job's reporter, and job's officer when status is complete
+            // Send email to the job's reporter when status is complete
+            $reporterMailWarning = null;
             if ($request->status === 'complete') {
-                $this->sendCompleteNotificationToReporters($salarySheet);
+                $reporterMailWarning = $this->sendCompleteNotificationToReporters($salarySheet, $request->reporter_id);
             }
 
             // Process rows when present (same structure as create/enforce)
@@ -551,8 +555,14 @@ class SalarySheetController extends Controller
                 }
             }
 
-            return redirect()->route('admin.salary-sheets.index')
+            $redirect = redirect()->route('admin.salary-sheets.index')
                 ->with('success', 'Salary sheet updated successfully.');
+
+            if ($reporterMailWarning) {
+                $redirect->with('warning', $reporterMailWarning);
+            }
+
+            return $redirect;
         } catch (\Exception $e) {
             return redirect()->back()
                 ->withErrors(['error' => 'Failed to update salary sheet: ' . $e->getMessage()])
@@ -858,18 +868,21 @@ class SalarySheetController extends Controller
 
             $action = 'created';
 
-
-
-
-            // Send email notification to reporters if status is 'complete'
+            // Send email notification to the job's reporter if status is 'complete'
+            $reporterMailWarning = null;
             if ($request->status === 'complete') {
-                $this->sendCompleteNotificationToReporters($salarySheet);
+                $reporterMailWarning = $this->sendCompleteNotificationToReporters($salarySheet, $request->reporter_id);
             }
 
-            return redirect()->route('admin.salary-sheets.index')
+            $redirect = redirect()->route('admin.salary-sheets.index')
                 ->with('success', 'Salary sheet ' . $action . ' successfully for job ' . $job->job_number . ': ' . $salarySheet->sheet_no);
+
+            if ($reporterMailWarning) {
+                $redirect->with('warning', $reporterMailWarning);
+            }
+
+            return $redirect;
         } catch (\Exception $e) {
-            dd($e);
             Log::error('Error processing salary sheet:', [
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
@@ -1099,9 +1112,16 @@ class SalarySheetController extends Controller
 
     /**
      * Send email notification when salary sheet status is complete.
-     * Sends ONLY to the job's assigned reporter.
+     *
+     * Resolution order for the recipient:
+     *  1. $selectedReporterId, if given (from the "Save Salary Sheet" modal's reporter dropdown).
+     *     If the job has no reporter assigned yet, this selection is also saved as the
+     *     job's assigned reporter.
+     *  2. The job's already-assigned reporter otherwise.
+     *
+     * @return string|null A user-facing warning message if the mail could NOT be sent, null on success.
      */
-    private function sendCompleteNotificationToReporters(SalarySheet $salarySheet)
+    private function sendCompleteNotificationToReporters(SalarySheet $salarySheet, $selectedReporterId = null): ?string
     {
         try {
             $mailDriver = config('mail.default');
@@ -1113,43 +1133,71 @@ class SalarySheetController extends Controller
             Log::info('=== SALARY SHEET COMPLETE EMAIL NOTIFICATION START ===');
 
             $salarySheet->load(['job.client', 'job.reporter']);
+            $job = $salarySheet->job;
 
-            if (!$salarySheet->job || !$salarySheet->job->reporter) {
+            if (!$job) {
+                Log::warning('No job found for salary sheet complete notification', [
+                    'sheet_no' => $salarySheet->sheet_no,
+                    'job_id' => $salarySheet->job_id,
+                ]);
+                return 'Cannot send reporter approval mail because the salary sheet has no associated job.';
+            }
+
+            $reporter = null;
+
+            if (!empty($selectedReporterId)) {
+                $reporter = User::find($selectedReporterId);
+
+                // If the job doesn't have a reporter yet, assign the selected one.
+                if ($reporter && !$job->reporter_id) {
+                    $job->reporter_id = $reporter->id;
+                    $job->save();
+                }
+            }
+
+            // Fall back to the job's assigned reporter when none was explicitly selected.
+            if (!$reporter) {
+                $reporter = $job->reporter;
+            }
+
+            if (!$reporter) {
                 Log::warning('No reporter assigned to job for salary sheet complete notification', [
                     'sheet_no' => $salarySheet->sheet_no,
                     'job_id' => $salarySheet->job_id,
                 ]);
-                return;
+                return 'Cannot send reporter approval mail because the job reporter is not assigned.';
             }
 
-            $reporter = $salarySheet->job->reporter;
             if (!$reporter->email) {
                 Log::warning('Reporter has no email - cannot send complete notification', [
                     'sheet_no' => $salarySheet->sheet_no,
                     'reporter_id' => $reporter->id,
                 ]);
-                return;
+                return "Cannot send reporter approval mail because reporter \"{$reporter->name}\" has no email address on file.";
             }
 
             Log::info('Sending salary sheet complete notification to job reporter', [
                 'sheet_no' => $salarySheet->sheet_no,
-                'job_number' => $salarySheet->job->job_number,
+                'job_number' => $job->job_number,
                 'reporter_email' => $reporter->email,
             ]);
 
-            Mail::to($reporter->email)->send(new SalarySheetCompleteNotification($salarySheet));
+            Mail::to($reporter->email)->queue(new SalarySheetCompleteNotification($salarySheet));
 
-            Log::info('Salary sheet complete notification sent to reporter', [
+            Log::info('Salary sheet complete notification queued for reporter', [
                 'sheet_no' => $salarySheet->sheet_no,
                 'reporter_email' => $reporter->email,
             ]);
             Log::info('=== SALARY SHEET COMPLETE EMAIL NOTIFICATION END ===');
+
+            return null;
         } catch (\Exception $e) {
             Log::error('Failed to send salary sheet complete notification', [
                 'sheet_no' => $salarySheet->sheet_no ?? null,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
+            return 'Cannot send reporter approval mail due to an unexpected error: ' . $e->getMessage();
         }
     }
 
@@ -1204,9 +1252,9 @@ class SalarySheetController extends Controller
                 'recipients' => $toAddresses,
             ]);
 
-            Mail::to($toAddresses)->send(new SalarySheetApprovedNotification($salarySheet, $approvedBy));
+            Mail::to($toAddresses)->queue(new SalarySheetApprovedNotification($salarySheet, $approvedBy));
 
-            Log::info('Salary sheet approval notification sent', [
+            Log::info('Salary sheet approval notification queued', [
                 'sheet_no' => $salarySheet->sheet_no,
                 'recipient_count' => count($toAddresses),
             ]);
@@ -1274,7 +1322,7 @@ class SalarySheetController extends Controller
             if ($salarySheet->job->client) {
                 $row++;
                 $sheet->setCellValue('A' . $row, 'Client:');
-                $sheet->setCellValue('B' . $row, $salarySheet->job->client->client_name ?? 'N/A');
+                $sheet->setCellValue('B' . $row, $salarySheet->job->client->name ?? 'N/A');
             }
         }
 

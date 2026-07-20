@@ -151,7 +151,7 @@
                 @if($salarySheet->job && $salarySheet->job->client)
                 <tr>
                     <td>Client:</td>
-                    <td>{{ $salarySheet->job->client->client_name ?? 'N/A' }}</td>
+                    <td>{{ $salarySheet->job->client->name ?? 'N/A' }}</td>
                 </tr>
                 @endif
                 <tr>

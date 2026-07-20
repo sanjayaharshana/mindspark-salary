@@ -14,10 +14,18 @@
 <div class="card">
     <div class="card-header">
         <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h3>Salary Sheet Information</h3>
-            <div style="display: flex; gap: 0.5rem;">
+            <h3 style="font-size:1rem;">Salary Sheet Information</h3>
+            <div style="display: flex; gap: 0.4rem;">
+                <a href="{{ route('admin.salary-sheets.print', $salarySheet) }}" target="_blank" class="btn btn-primary">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 5px;">
+                        <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                        <rect x="6" y="14" width="12" height="8"></rect>
+                    </svg>
+                    Print
+                </a>
                 <a href="{{ route('admin.salary-sheets.export', $salarySheet) }}" class="btn btn-success">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 5px;">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                         <polyline points="7 10 12 15 17 10"></polyline>
                         <line x1="12" y1="15" x2="12" y2="3"></line>
@@ -27,7 +35,7 @@
                 @can('edit salary sheets')
                     @if($salarySheet->job && $salarySheet->job->status !== 'completed' && !in_array($salarySheet->status, ['complete', 'approve', 'paid']))
                         <a href="{{ route('admin.salary-sheets.edit', $salarySheet) }}" class="btn btn-warning">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 5px;">
                                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                             </svg>
@@ -35,7 +43,7 @@
                         </a>
                     @else
                         <span class="btn btn-warning" style="opacity: 0.5; cursor: not-allowed;" title="Cannot edit salary sheets with complete/paid status or for completed jobs">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 5px;">
                                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                             </svg>
@@ -44,7 +52,7 @@
                     @endif
                 @endcan
                 <a href="{{ route('admin.salary-sheets.index') }}" class="btn btn-secondary">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 5px;">
                         <path d="M19 12H5M12 19l-7-7 7-7"></path>
                     </svg>
                     Back to List
@@ -52,41 +60,78 @@
             </div>
         </div>
     </div>
-    <div class="card-body">
+    <div class="card-body" style="padding: 1rem;">
         <!-- Header Section -->
-        <div style="display: flex; align-items: center; margin-bottom: 2rem; padding: 1.5rem; background: linear-gradient(135deg, #059669 0%, #047857 100%); border-radius: 0.75rem; color: white;">
-            <div style="width: 80px; height: 80px; background: rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 1.5rem;">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        @php
+            $statusDisplay = $salarySheet->status_display;
+            $statusClass = $salarySheet->status;
+
+            // For reporter role, show "Pending Approval" for "complete" status
+            if (auth()->check() && auth()->user()->hasRole('reporter') && $salarySheet->status === 'complete') {
+                $statusDisplay = 'Pending Approval';
+                $statusClass = 'pending-approval';
+            }
+
+            $statusGradients = [
+                'draft'            => ['#f59e0b', '#d97706'],
+                'complete'         => ['#059669', '#047857'],
+                'approve'          => ['#7c3aed', '#6d28d9'],
+                'paid'             => ['#2563eb', '#1d4ed8'],
+                'reject'           => ['#dc2626', '#b91c1c'],
+                'pending-approval' => ['#f59e0b', '#d97706'],
+            ];
+            [$gradFrom, $gradTo] = $statusGradients[$statusClass] ?? ['#059669', '#047857'];
+        @endphp
+        <div style="display: flex; align-items: center; margin-bottom: 1rem; padding: 0.75rem 1rem; background: linear-gradient(135deg, {{ $gradFrom }} 0%, {{ $gradTo }} 100%); border-radius: 0.5rem; color: white;">
+            <div style="width: 42px; height: 42px; background: rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 0.85rem; flex-shrink:0;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
                     <line x1="8" y1="21" x2="16" y2="21"></line>
                     <line x1="12" y1="17" x2="12" y2="21"></line>
                 </svg>
             </div>
             <div>
-                <h2 style="margin: 0; font-size: 1.75rem;">{{ $salarySheet->sheet_no }}</h2>
-                <p style="margin: 0.5rem 0 0 0; font-size: 1.1rem; opacity: 0.9;">
-                    @php
-                        $statusDisplay = $salarySheet->status_display;
-                        $statusClass = $salarySheet->status;
-
-                        // For reporter role, show "Pending Approval" for "complete" status
-                        if (auth()->check() && auth()->user()->hasRole('reporter') && $salarySheet->status === 'complete') {
-                            $statusDisplay = 'Pending Approval';
-                            $statusClass = 'pending-approval';
-                        }
-                    @endphp
-                    <span class="status-badge status-{{ $statusClass }}" style="background: rgba(255,255,255,0.2); color: white;">
+                <h2 style="margin: 0; font-size: 1.1rem;">{{ $salarySheet->sheet_no }}</h2>
+                <p style="margin: 0.3rem 0 0 0; font-size: 0.8rem; opacity: 0.9;">
+                    <span class="status-badge status-{{ $statusClass }}" style="background: rgba(255,255,255,0.25); color: white;">
                         {{ $statusDisplay }}
                     </span>
+                    @if($salarySheet->job)
+                        <span style="margin-left:0.6rem; font-size:0.72rem; opacity:0.85;">{{ $salarySheet->job->job_number }}</span>
+                    @endif
                 </p>
-                <p style="margin: 0.25rem 0 0 0; font-size: 0.9rem; opacity: 0.8;">
+                <p style="margin: 0.2rem 0 0 0; font-size: 0.72rem; opacity: 0.8;">
                     {{ $salarySheet->month_name }} {{ $salarySheet->year }}
+                    @if($salarySheet->start_date || $salarySheet->end_date)
+                        &middot;
+                        {{ $salarySheet->start_date?->format('M d, Y') ?? '—' }}
+                        to
+                        {{ $salarySheet->end_date?->format('M d, Y') ?? '—' }}
+                    @endif
                 </p>
             </div>
         </div>
 
+        <!-- Tabs -->
+        <div class="sd-tabs">
+            <button class="sd-tab active" onclick="sdTab(event,'sd-overview')">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                Overview
+            </button>
+            <button class="sd-tab" onclick="sdTab(event,'sd-items')">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                Items
+                @if($salarySheet->items && $salarySheet->items->count() > 0)
+                    <span class="sd-tab-count">{{ $salarySheet->items->count() }}</span>
+                @endif
+            </button>
+        </div>
+
+        <!-- Overview Tab -->
+        <div id="sd-overview" class="sd-tab-content active">
+
         <!-- Main Content Grid -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
 
             <!-- Left Column: Basic Information -->
             <div>
@@ -94,7 +139,7 @@
                 @if($salarySheet->job)
                 <div class="info-card">
                     <h4 class="card-title">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
                             <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
                             <line x1="8" y1="21" x2="16" y2="21"></line>
                             <line x1="12" y1="17" x2="12" y2="21"></line>
@@ -108,16 +153,42 @@
                             <div>{{ $salarySheet->job->job_number ?? 'N/A' }}</div>
                         </div>
                         <div class="info-item">
-                            <label>Job Title</label>
-                            <div>{{ $salarySheet->job->job_title ?? 'N/A' }}</div>
+                            <label>Job Name</label>
+                            <div>{{ $salarySheet->job->job_name ?? 'N/A' }}</div>
                         </div>
                         <div class="info-item">
                             <label>Client</label>
-                            <div>{{ $salarySheet->job->client->client_name ?? 'N/A' }}</div>
+                            <div>{{ $salarySheet->job->client->name ?? 'N/A' }}</div>
                         </div>
                         <div class="info-item">
                             <label>Location</label>
                             <div>{{ $salarySheet->location ?? 'N/A' }}</div>
+                        </div>
+                        <div class="info-item">
+                            <label>Period</label>
+                            <div>
+                                @if($salarySheet->start_date || $salarySheet->end_date)
+                                    {{ $salarySheet->start_date?->format('Y-m-d') ?? '—' }} &rarr; {{ $salarySheet->end_date?->format('Y-m-d') ?? '—' }}
+                                @else
+                                    <span class="no-val">Not set</span>
+                                @endif
+                            </div>
+                        </div>
+                        <div class="info-item">
+                            <label>Officer</label>
+                            <div>
+                                {{ $salarySheet->job->officer->name ?? 'Not assigned' }}
+                            </div>
+                        </div>
+                        <div class="info-item">
+                            <label>Reporter</label>
+                            <div>
+                                @if($salarySheet->job->reporter)
+                                    {{ $salarySheet->job->reporter->name }}
+                                @else
+                                    <span class="no-val" title="No reporter assigned to this job — approval mail cannot be sent until one is assigned.">Not assigned</span>
+                                @endif
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -126,7 +197,7 @@
                 <!-- Summary Information -->
                 <div class="info-card">
                     <h4 class="card-title">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
                             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                             <circle cx="12" cy="7" r="4"></circle>
                         </svg>
@@ -169,7 +240,7 @@
                 <!-- Financial Summary -->
                 <div class="info-card totals-card">
                     <h4 class="card-title">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
                             <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
                             <line x1="1" y1="10" x2="23" y2="10"></line>
                         </svg>
@@ -192,7 +263,7 @@
                 @if($salarySheet->notes)
                 <div class="info-card">
                     <h4 class="card-title">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                             <polyline points="14,2 14,8 20,8"></polyline>
                             <line x1="16" y1="13" x2="8" y2="13"></line>
@@ -207,19 +278,24 @@
             </div>
         </div>
 
-        <!-- Salary Sheet Items Section -->
+        <!-- Timestamps -->
+        <div class="timestamps-section">
+            <div class="timestamp-item">
+                <label>Created</label>
+                <div>{{ $salarySheet->created_at->format('F d, Y \a\t g:i A') }}</div>
+            </div>
+            <div class="timestamp-item">
+                <label>Last Updated</label>
+                <div>{{ $salarySheet->updated_at->format('F d, Y \a\t g:i A') }}</div>
+            </div>
+        </div>
+        </div>
+        <!-- /Overview Tab -->
+
+        <!-- Items Tab -->
+        <div id="sd-items" class="sd-tab-content">
         @if($salarySheet->items && $salarySheet->items->count() > 0)
         <div class="items-section">
-            <h3 class="section-title">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 12px;">
-                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                    <line x1="16" y1="2" x2="16" y2="6"></line>
-                    <line x1="8" y1="2" x2="8" y2="6"></line>
-                    <line x1="3" y1="10" x2="21" y2="10"></line>
-                </svg>
-                Salary Sheet Items ({{ $salarySheet->items->count() }})
-            </h3>
-
             @foreach($salarySheet->items as $index => $item)
             <div class="item-card">
                 <div class="item-header">
@@ -239,24 +315,24 @@
 
                 <div class="item-content">
                     <!-- Promoter and Position Information -->
-                    <div class="promoter-info-section" style="margin-bottom: 1.5rem; padding: 1rem; background: #f8fafc; border-radius: 0.5rem; border: 1px solid #e5e7eb;">
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="promoter-info-section" style="margin-bottom: 0.75rem; padding: 0.6rem; background: #f8fafc; border-radius: 0.4rem; border: 1px solid #e5e7eb;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem;">
                             <div class="info-item">
                                 <label>Promoter Name</label>
-                                <div style="font-weight: 600; color: #374151;">
+                                <div style="font-weight: 600; color: #374151; font-size: 0.8rem;">
                                     {{ $item->promoter->promoter_name ?? ($item->attendance_data['promoter_name'] ?? 'N/A') }}
                                 </div>
                             </div>
                             <div class="info-item">
                                 <label>Position</label>
-                                <div style="font-weight: 600; color: #374151;">
+                                <div style="font-weight: 600; color: #374151; font-size: 0.8rem;">
                                     {{ $item->position->position_name ?? ($item->attendance_data['position'] ?? 'N/A') }}
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 2rem;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
 
                         <!-- Attendance Data -->
                         <div class="item-section">
@@ -344,27 +420,29 @@
             </div>
             @endforeach
         </div>
+        @else
+        <div class="no-coordinator">No items on this salary sheet.</div>
         @endif
-
-        <!-- Timestamps -->
-        <div class="timestamps-section">
-            <div class="timestamp-item">
-                <label>Created</label>
-                <div>{{ $salarySheet->created_at->format('F d, Y \a\t g:i A') }}</div>
-            </div>
-            <div class="timestamp-item">
-                <label>Last Updated</label>
-                <div>{{ $salarySheet->updated_at->format('F d, Y \a\t g:i A') }}</div>
-            </div>
         </div>
+        <!-- /Items Tab -->
     </div>
 </div>
 
 <style>
+.sd-tabs { display:flex; border-bottom:2px solid #e5e7eb; margin-bottom:1rem; gap:.15rem; }
+.sd-tab { padding:.5rem .9rem; border:none; background:none; cursor:pointer; font-size:.8rem; font-weight:600; color:#6b7280; border-bottom:2px solid transparent; margin-bottom:-2px; display:flex; align-items:center; gap:.35rem; transition:all .15s; border-radius:6px 6px 0 0; }
+.sd-tab:hover { color:#374151; background:#f9fafb; }
+.sd-tab.active { color:#059669; border-bottom-color:#059669; background:#fff; }
+.sd-tab-count { background:#059669; color:#fff; border-radius:20px; padding:.05rem .4rem; font-size:.62rem; font-weight:700; }
+.sd-tab-content { display:none; }
+.sd-tab-content.active { display:block; }
+</style>
+
+<style>
 .status-badge {
-    padding: 0.25rem 0.75rem;
+    padding: 0.15rem 0.55rem;
     border-radius: 9999px;
-    font-size: 0.75rem;
+    font-size: 0.65rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -375,9 +453,24 @@
     color: #92400e;
 }
 
-.status-approved {
+.status-complete {
     background-color: #d1fae5;
     color: #065f46;
+}
+
+.status-approve {
+    background-color: #ede9fe;
+    color: #5b21b6;
+}
+
+.status-reject {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+.status-pending-approval {
+    background-color: #fed7aa;
+    color: #9a3412;
 }
 
 .status-paid {
@@ -385,36 +478,42 @@
     color: #1e40af;
 }
 
+.no-val {
+    font-size: 0.75rem;
+    color: #9ca3af;
+    font-style: italic;
+}
+
 .info-card {
     background: #f8fafc;
-    padding: 1.5rem;
-    border-radius: 0.75rem;
-    margin-bottom: 1.5rem;
+    padding: 0.85rem;
+    border-radius: 0.5rem;
+    margin-bottom: 0.75rem;
     border: 1px solid #e5e7eb;
 }
 
 .card-title {
     display: flex;
     align-items: center;
-    margin-bottom: 1rem;
+    margin-bottom: 0.6rem;
     color: #374151;
-    font-size: 1.1rem;
+    font-size: 0.85rem;
     font-weight: 600;
 }
 
 .info-grid {
     display: grid;
-    gap: 1rem;
+    gap: 0.6rem;
 }
 
 .info-item {
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
+    gap: 0.15rem;
 }
 
 .info-item label {
-    font-size: 0.75rem;
+    font-size: 0.65rem;
     font-weight: 600;
     color: #6b7280;
     text-transform: uppercase;
@@ -424,6 +523,7 @@
 .info-item div {
     color: #374151;
     font-weight: 500;
+    font-size: 0.82rem;
 }
 
 .amount {
@@ -442,117 +542,123 @@
 
 .totals-grid {
     display: grid;
-    gap: 1rem;
+    gap: 0.6rem;
 }
 
 .total-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.75rem;
+    padding: 0.5rem 0.6rem;
     background: white;
-    border-radius: 0.5rem;
+    border-radius: 0.4rem;
     border: 1px solid #e5e7eb;
 }
 
+.total-item label {
+    font-size: 0.72rem;
+    color: #6b7280;
+    font-weight: 600;
+}
+
 .total-earnings {
-    font-size: 1.2rem;
+    font-size: 0.9rem;
     color: #2563eb;
 }
 
 .net-salary {
-    font-size: 1.3rem;
+    font-size: 1rem;
     color: #dc2626;
     font-weight: bold;
 }
 
 .items-section {
-    margin: 2rem 0;
+    margin: 1rem 0;
 }
 
 .section-title {
     display: flex;
     align-items: center;
-    margin-bottom: 1.5rem;
+    margin-bottom: 0.75rem;
     color: #374151;
-    font-size: 1.25rem;
+    font-size: 0.95rem;
     font-weight: 600;
 }
 
 .item-card {
     background: white;
     border: 1px solid #e5e7eb;
-    border-radius: 0.75rem;
-    margin-bottom: 1rem;
+    border-radius: 0.5rem;
+    margin-bottom: 0.6rem;
     overflow: hidden;
 }
 
 .item-header {
     background: #f8fafc;
-    padding: 1rem 1.5rem;
+    padding: 0.5rem 0.75rem;
     border-bottom: 1px solid #e5e7eb;
 }
 
 .item-header h4 {
     margin: 0;
     color: #374151;
-    font-size: 1.1rem;
+    font-size: 0.85rem;
 }
 
 .position-badge {
     background: #dbeafe;
     color: #1e40af;
-    padding: 0.25rem 0.5rem;
-    border-radius: 0.375rem;
-    font-size: 0.75rem;
+    padding: 0.15rem 0.4rem;
+    border-radius: 0.3rem;
+    font-size: 0.65rem;
     font-weight: 500;
-    margin-left: 0.5rem;
+    margin-left: 0.4rem;
 }
 
 .location-badge {
     background: #dcfce7;
     color: #166534;
-    padding: 0.25rem 0.5rem;
-    border-radius: 0.375rem;
-    font-size: 0.75rem;
+    padding: 0.15rem 0.4rem;
+    border-radius: 0.3rem;
+    font-size: 0.65rem;
     font-weight: 500;
-    margin-left: 0.5rem;
+    margin-left: 0.4rem;
 }
 
 .promoter-badge {
     background: #fef3c7;
     color: #92400e;
-    padding: 0.25rem 0.5rem;
-    border-radius: 0.375rem;
-    font-size: 0.75rem;
+    padding: 0.15rem 0.4rem;
+    border-radius: 0.3rem;
+    font-size: 0.65rem;
     font-weight: 500;
-    margin-left: 0.5rem;
+    margin-left: 0.4rem;
 }
 
 .item-content {
-    padding: 1.5rem;
+    padding: 0.85rem;
 }
 
 .item-section h5 {
-    margin: 0 0 1rem 0;
+    margin: 0 0 0.5rem 0;
     color: #374151;
-    font-size: 1rem;
+    font-size: 0.78rem;
     font-weight: 600;
 }
 
 .dates-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-    gap: 0.5rem;
-    margin-bottom: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+    gap: 0.35rem;
+    margin-bottom: 0.6rem;
 }
 
 .date-item {
     text-align: center;
-    padding: 0.5rem;
-    border-radius: 0.375rem;
+    padding: 0.35rem;
+    border-radius: 0.3rem;
     border: 1px solid #e5e7eb;
-    font-size: 0.75rem;
+    font-size: 0.65rem;
 }
 
 .date-item.present {
@@ -568,19 +674,19 @@
 .date {
     font-weight: 600;
     color: #6b7280;
-    margin-bottom: 0.125rem;
+    margin-bottom: 0.1rem;
 }
 
 .value {
-    font-size: 0.75rem;
+    font-size: 0.65rem;
     font-weight: 500;
 }
 
 .attendance-summary {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 0.75rem;
-    padding-top: 0.75rem;
+    gap: 0.5rem;
+    padding-top: 0.5rem;
     border-top: 1px solid #e5e7eb;
 }
 
@@ -590,27 +696,33 @@
 
 .summary-item label {
     display: block;
-    font-size: 0.625rem;
+    font-size: 0.58rem;
     font-weight: 600;
     color: #6b7280;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    margin-bottom: 0.125rem;
+    margin-bottom: 0.1rem;
 }
 
 .payment-grid {
     display: grid;
-    gap: 0.75rem;
+    gap: 0.5rem;
 }
 
 .payment-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.5rem;
+    padding: 0.4rem 0.5rem;
     background: #f8fafc;
-    border-radius: 0.375rem;
+    border-radius: 0.3rem;
     border: 1px solid #e5e7eb;
+    font-size: 0.78rem;
+}
+
+.payment-item label {
+    font-size: 0.7rem;
+    color: #6b7280;
 }
 
 .payment-item.total-item {
@@ -620,28 +732,28 @@
 }
 
 .net-amount {
-    font-size: 1.1rem;
+    font-size: 0.88rem;
     color: #dc2626;
     font-weight: bold;
 }
 
 .coordinator-grid {
     display: grid;
-    gap: 0.75rem;
+    gap: 0.5rem;
 }
 
 .coordinator-item {
     display: flex;
     flex-direction: column;
-    gap: 0.125rem;
-    padding: 0.5rem;
+    gap: 0.1rem;
+    padding: 0.4rem 0.5rem;
     background: #f8fafc;
-    border-radius: 0.375rem;
+    border-radius: 0.3rem;
     border: 1px solid #e5e7eb;
 }
 
 .coordinator-item label {
-    font-size: 0.625rem;
+    font-size: 0.58rem;
     font-weight: 600;
     color: #6b7280;
     text-transform: uppercase;
@@ -651,41 +763,44 @@
 .coordinator-item div {
     color: #374151;
     font-weight: 500;
+    font-size: 0.78rem;
 }
 
 .no-coordinator {
     text-align: center;
     color: #6b7280;
     font-style: italic;
-    padding: 1rem;
+    padding: 0.6rem;
     background: #f8fafc;
-    border-radius: 0.375rem;
+    border-radius: 0.3rem;
     border: 1px solid #e5e7eb;
+    font-size: 0.78rem;
 }
 
 .notes-content {
     color: #374151;
-    line-height: 1.6;
+    line-height: 1.5;
     white-space: pre-wrap;
+    font-size: 0.82rem;
 }
 
 .timestamps-section {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
-    margin-top: 2rem;
-    padding-top: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.6rem;
+    margin-top: 1rem;
+    padding-top: 0.75rem;
     border-top: 1px solid #e5e7eb;
 }
 
 .timestamp-item {
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
+    gap: 0.15rem;
 }
 
 .timestamp-item label {
-    font-size: 0.75rem;
+    font-size: 0.65rem;
     font-weight: 600;
     color: #6b7280;
     text-transform: uppercase;
@@ -695,19 +810,27 @@
 .timestamp-item div {
     color: #374151;
     font-weight: 500;
+    font-size: 0.78rem;
 }
 
-.btn-warning {
-    background-color: #f59e0b;
-    color: white;
-    padding: 0.75rem 1.5rem;
+.btn-primary,
+.btn-success,
+.btn-warning,
+.btn-secondary {
+    font-size: 0.78rem;
+    padding: 0.4rem 0.8rem;
     border: none;
-    border-radius: 0.375rem;
+    border-radius: 0.35rem;
     text-decoration: none;
     display: inline-flex;
     align-items: center;
     font-weight: 500;
     transition: all 0.2s;
+}
+
+.btn-warning {
+    background-color: #f59e0b;
+    color: white;
 }
 
 .btn-warning:hover {
@@ -718,14 +841,6 @@
 .btn-secondary {
     background-color: #6b7280;
     color: white;
-    padding: 0.75rem 1.5rem;
-    border: none;
-    border-radius: 0.375rem;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    font-weight: 500;
-    transition: all 0.2s;
 }
 
 .btn-secondary:hover {
@@ -739,7 +854,7 @@
     }
 
     .dates-grid {
-        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
     }
 
     .attendance-summary {
@@ -751,4 +866,13 @@
     }
 }
 </style>
+
+<script>
+function sdTab(e, id) {
+    document.querySelectorAll('.sd-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.sd-tab-content').forEach(c => c.classList.remove('active'));
+    e.currentTarget.classList.add('active');
+    document.getElementById(id).classList.add('active');
+}
+</script>
 @endsection
