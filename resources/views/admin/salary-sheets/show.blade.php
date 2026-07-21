@@ -256,6 +256,14 @@
                             <label>Total Attendance Amount</label>
                             <div class="amount total-earnings">Rs. {{ number_format($salarySheet->total_attendance_amount, 2) }}</div>
                         </div>
+                        <div class="total-item">
+                            <label>Total Allowances</label>
+                            <div class="amount">Rs. {{ number_format($salarySheet->total_allowances, 2) }}</div>
+                        </div>
+                        <div class="total-item">
+                            <label>Total Coordination Fee</label>
+                            <div class="amount">Rs. {{ number_format($salarySheet->total_coordination_fee, 2) }}</div>
+                        </div>
                     </div>
                 </div>
 
@@ -347,7 +355,7 @@
                         </div>
                     </div>
 
-                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 1rem;">
 
                         <!-- Attendance Data -->
                         <div class="item-section">
@@ -406,6 +414,27 @@
                                     <div class="amount net-amount">Rs. {{ number_format($item->net_amount, 2) }}</div>
                                 </div>
                             </div>
+                        </div>
+
+                        <!-- Allowances -->
+                        <div class="item-section">
+                            <h5>Allowances</h5>
+                            @if($item->allowances_data && count($item->allowances_data) > 0)
+                            <div class="payment-grid">
+                                @foreach($item->allowances_data as $allowanceName => $allowanceValue)
+                                <div class="payment-item">
+                                    <label>{{ $allowanceName }}</label>
+                                    <div class="amount">Rs. {{ number_format($allowanceValue, 2) }}</div>
+                                </div>
+                                @endforeach
+                                <div class="payment-item total-item">
+                                    <label>Total Allowances</label>
+                                    <div class="amount net-amount">Rs. {{ number_format($item->total_allowances, 2) }}</div>
+                                </div>
+                            </div>
+                            @else
+                            <div class="no-coordinator">No allowances</div>
+                            @endif
                         </div>
 
                         <!-- Coordinator Details -->

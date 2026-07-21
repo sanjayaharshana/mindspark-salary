@@ -166,6 +166,26 @@ class SalarySheet extends Model
     }
 
     /**
+     * Calculate total dynamic allowances (allowances_data) across all items
+     */
+    public function getTotalAllowancesAttribute()
+    {
+        return $this->items->sum(function ($item) {
+            return $item->total_allowances;
+        });
+    }
+
+    /**
+     * Calculate total coordination fee across all items
+     */
+    public function getTotalCoordinationFeeAttribute()
+    {
+        return $this->items->sum(function ($item) {
+            return $item->coordinator_amount;
+        });
+    }
+
+    /**
      * Get all unique positions in this salary sheet
      */
     public function getPositionsAttribute()

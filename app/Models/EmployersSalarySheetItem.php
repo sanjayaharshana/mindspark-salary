@@ -205,6 +205,18 @@ class EmployersSalarySheetItem extends Model
     }
 
     /**
+     * Sum of all dynamic allowances (allowances_data) for this item
+     */
+    public function getTotalAllowancesAttribute()
+    {
+        if (!is_array($this->allowances_data)) {
+            return 0;
+        }
+
+        return array_sum(array_map('floatval', $this->allowances_data));
+    }
+
+    /**
      * Get daily attendance as array
      */
     public function getDailyAttendanceAttribute()
