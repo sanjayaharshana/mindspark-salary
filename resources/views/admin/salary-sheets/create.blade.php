@@ -812,6 +812,7 @@ body.sc-fullscreen .sc-status-btn { height: 29px; font-size: .78rem; padding: 0 
                 <th style="width:700px;">Attendance</th>
                 <th style="width:600px;">Payments</th>
                 <th style="width:400px;">Coordinator</th>
+                <th style="width:340px;">Coordinator Bank Details</th>
                 <th style="width:64px;">Act.</th>
             </tr>
             <tr class="sub-header">
@@ -856,6 +857,13 @@ body.sc-fullscreen .sc-status-btn { height: 29px; font-size: .78rem; padding: 0 
                         <div style="text-align:center;font-size:.65rem;">Coordinator ID</div>
                         <div style="text-align:center;font-size:.65rem;">Name</div>
                         <div style="text-align:center;font-size:.65rem;">Fee</div>
+                    </div>
+                </th>
+                <th>
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;width:533px;">
+                        <div style="text-align:center;font-size:.65rem;">Bank Name</div>
+                        <div style="text-align:center;font-size:.65rem;">Branch</div>
+                        <div style="text-align:center;font-size:.65rem;">Account No.</div>
                     </div>
                 </th>
                 <th></th>
@@ -2195,6 +2203,13 @@ function addPromoterRow() {
             </div>
         </td>
         <td>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                <input type="text" class="table-input-small table-input-readonly" id="coordinatorBankName-${nextRowNumber}" name="rows[${nextRowNumber}][coordinator_bank_name]" readonly placeholder="Bank Name">
+                <input type="text" class="table-input-small table-input-readonly" id="coordinatorBankBranch-${nextRowNumber}" name="rows[${nextRowNumber}][coordinator_bank_branch]" readonly placeholder="Bank Branch">
+                <input type="text" class="table-input-small table-input-readonly" id="coordinatorBankAccount-${nextRowNumber}" name="rows[${nextRowNumber}][coordinator_bank_account]" readonly placeholder="Account No.">
+            </div>
+        </td>
+        <td>
             <div style="display: flex; gap: 0.25rem; justify-content: center;">
                 <button type="button" class="btn-duplicate" onclick="duplicateRow(${nextRowNumber})" title="Duplicate this promoter">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -2793,8 +2808,18 @@ function updateCoordinatorDisplay(rowNum, selectElement) {
     const selectedOption = selectElement.options[selectElement.selectedIndex];
     const row = selectElement.closest('tr');
 
+    const bankNameInput = document.getElementById(`coordinatorBankName-${rowNum}`);
+    const bankBranchInput = document.getElementById(`coordinatorBankBranch-${rowNum}`);
+    const bankAccountInput = document.getElementById(`coordinatorBankAccount-${rowNum}`);
+
     if (selectedOption && selectedOption.dataset.name) {
         row.querySelector('input[name="rows[' + rowNum + '][current_coordinator]"]').value = selectedOption.dataset.name;
+
+        // Auto-fill the coordinator's bank details
+        const selectedCoordinator = coordinators.find(c => c.id == selectElement.value);
+        if (bankNameInput) bankNameInput.value = selectedCoordinator ? (selectedCoordinator.bank_name || '') : '';
+        if (bankBranchInput) bankBranchInput.value = selectedCoordinator ? (selectedCoordinator.bank_branch_name || '') : '';
+        if (bankAccountInput) bankAccountInput.value = selectedCoordinator ? (selectedCoordinator.account_number || '') : '';
 
         // Calculate coordinator fee based on present days
         calculateCoordinatorFee(rowNum);
@@ -2806,6 +2831,11 @@ function updateCoordinatorDisplay(rowNum, selectElement) {
         calculateRowNet(rowNum);
     } else {
         row.querySelector('input[name="rows[' + rowNum + '][current_coordinator]"]').value = '';
+
+        // Clear coordinator bank details when no coordinator selected
+        if (bankNameInput) bankNameInput.value = '';
+        if (bankBranchInput) bankBranchInput.value = '';
+        if (bankAccountInput) bankAccountInput.value = '';
 
         // Clear coordinator fee when no coordinator selected
         const coordinationFeeInput = row.querySelector(`input[name="rows[${rowNum}][coordination_fee]"]`);
@@ -3962,6 +3992,9 @@ function duplicateRow(rowNum) {
     const sourceCoordinatorSearch = sourceRow.querySelector(`input[name="rows[${rowNum}][coordinator_search]"]`)?.value || '';
     const sourceCoordinatorName = sourceRow.querySelector(`input[name="rows[${rowNum}][current_coordinator]"]`)?.value || '';
     const sourceCoordinationFee = sourceRow.querySelector(`input[name="rows[${rowNum}][coordination_fee]"]`)?.value || '';
+    const sourceCoordinatorBankName = sourceRow.querySelector(`input[name="rows[${rowNum}][coordinator_bank_name]"]`)?.value || '';
+    const sourceCoordinatorBankBranch = sourceRow.querySelector(`input[name="rows[${rowNum}][coordinator_bank_branch]"]`)?.value || '';
+    const sourceCoordinatorBankAccount = sourceRow.querySelector(`input[name="rows[${rowNum}][coordinator_bank_account]"]`)?.value || '';
     const sourceAttendanceAmount = sourceRow.querySelector(`input[name="rows[${rowNum}][attendance_amount]"]`)?.value || '';
     const sourceAttendanceTotal = sourceRow.querySelector(`input[name="rows[${rowNum}][attendance_total]"]`)?.value || '';
 
@@ -4068,6 +4101,13 @@ function duplicateRow(rowNum) {
                 </div>
                 <input type="text" class="table-input-small table-input-readonly" name="rows[${nextRowNumber}][current_coordinator]" readonly value="${sourceCoordinatorName}">
                 <input type="number" step="0.01" class="table-input-small" name="rows[${nextRowNumber}][coordination_fee]" value="${sourceCoordinationFee}" title="Coordination Fee (Auto-calculated, but editable)" oninput="markAsCustom(this, 'coordination_fee'); calculateRowNet(${nextRowNumber})" placeholder="0.00">
+            </div>
+        </td>
+        <td>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                <input type="text" class="table-input-small table-input-readonly" id="coordinatorBankName-${nextRowNumber}" name="rows[${nextRowNumber}][coordinator_bank_name]" readonly placeholder="Bank Name" value="${sourceCoordinatorBankName}">
+                <input type="text" class="table-input-small table-input-readonly" id="coordinatorBankBranch-${nextRowNumber}" name="rows[${nextRowNumber}][coordinator_bank_branch]" readonly placeholder="Bank Branch" value="${sourceCoordinatorBankBranch}">
+                <input type="text" class="table-input-small table-input-readonly" id="coordinatorBankAccount-${nextRowNumber}" name="rows[${nextRowNumber}][coordinator_bank_account]" readonly placeholder="Account No." value="${sourceCoordinatorBankAccount}">
             </div>
         </td>
         <td>
@@ -4196,7 +4236,7 @@ function loadExistingSalarySheets(jobId) {
 
     // Show loading state
     const tbody = document.getElementById('promoterRows');
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem; color: #6b7280;"><div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 11-6.219-8.56"></path></svg>Loading salary sheets...</div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 2rem; color: #6b7280;"><div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 11-6.219-8.56"></path></svg>Loading salary sheets...</div></td></tr>';
 
     // Fetch existing salary sheets for this job
     fetch(`/admin/salary-sheets/by-job/${jobId}`, {
@@ -4448,6 +4488,13 @@ function loadSalarySheetAsRow(sheet, index) {
                 </div>
                 <input type="text" class="table-input-small table-input-readonly" name="rows[${index}][coordinator_name]" readonly value="${coordinatorName}">
                 <input type="number" step="0.01" class="table-input-small" name="rows[${index}][coordination_fee]" title="Coordination Fee (Auto-calculated, but editable)" oninput="markAsCustom(this, 'coordination_fee'); calculateRowNet(${index})" value="${sheet.coordination_fee || 0}" ${sheet.coordination_fee ? 'data-custom-coordination-fee="true" data-loaded-from-db="true"' : ''}>
+            </div>
+        </td>
+        <td>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                <input type="text" class="table-input-small table-input-readonly" id="coordinatorBankName-${index}" name="rows[${index}][coordinator_bank_name]" readonly placeholder="Bank Name" value="${coordinator ? (coordinator.bank_name || '') : ''}">
+                <input type="text" class="table-input-small table-input-readonly" id="coordinatorBankBranch-${index}" name="rows[${index}][coordinator_bank_branch]" readonly placeholder="Bank Branch" value="${coordinator ? (coordinator.bank_branch_name || '') : ''}">
+                <input type="text" class="table-input-small table-input-readonly" id="coordinatorBankAccount-${index}" name="rows[${index}][coordinator_bank_account]" readonly placeholder="Account No." value="${coordinator ? (coordinator.account_number || '') : ''}">
             </div>
         </td>
         <td>
@@ -4772,6 +4819,8 @@ function addPromoterRowFromJson(rowData, index) {
 
     const attendanceWidth = numDates * 80 + 160; // Base width for Total and Amount columns
 
+    const jsonCoordinator = rowData.coordinator_id ? coordinators.find(c => c.id == rowData.coordinator_id) : null;
+
     row.innerHTML = `
         <td style="text-align: center; font-weight: bold;">${index + 1}</td>
         <td>
@@ -4846,6 +4895,13 @@ function addPromoterRowFromJson(rowData, index) {
                 </div>
                 <input type="text" class="table-input-small table-input-readonly" name="rows[${index + 1}][current_coordinator]" readonly value="${rowData.current_coordinator || ''}">
                 <input type="number" step="0.01" class="table-input-small" name="rows[${index + 1}][coordination_fee]" title="Coordination Fee (Auto-calculated, but editable)" oninput="markAsCustom(this, 'coordination_fee'); calculateRowNet(${index + 1})" value="${rowData.coordination_fee || 0}" ${rowData.coordination_fee ? 'data-custom-coordination-fee="true" data-loaded-from-db="true"' : ''}>
+            </div>
+        </td>
+        <td>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                <input type="text" class="table-input-small table-input-readonly" id="coordinatorBankName-${index + 1}" name="rows[${index + 1}][coordinator_bank_name]" readonly placeholder="Bank Name" value="${jsonCoordinator ? (jsonCoordinator.bank_name || '') : ''}">
+                <input type="text" class="table-input-small table-input-readonly" id="coordinatorBankBranch-${index + 1}" name="rows[${index + 1}][coordinator_bank_branch]" readonly placeholder="Bank Branch" value="${jsonCoordinator ? (jsonCoordinator.bank_branch_name || '') : ''}">
+                <input type="text" class="table-input-small table-input-readonly" id="coordinatorBankAccount-${index + 1}" name="rows[${index + 1}][coordinator_bank_account]" readonly placeholder="Account No." value="${jsonCoordinator ? (jsonCoordinator.account_number || '') : ''}">
             </div>
         </td>
         <td>

@@ -181,6 +181,30 @@ class EmployersSalarySheetItem extends Model
     }
 
     /**
+     * Get coordinator bank name from coordinator_details
+     */
+    public function getCoordinatorBankNameAttribute()
+    {
+        return $this->coordinator_details['bank_name'] ?? null;
+    }
+
+    /**
+     * Get coordinator bank branch from coordinator_details
+     */
+    public function getCoordinatorBankBranchAttribute()
+    {
+        return $this->coordinator_details['bank_branch_name'] ?? null;
+    }
+
+    /**
+     * Get coordinator bank account number from coordinator_details
+     */
+    public function getCoordinatorAccountNumberAttribute()
+    {
+        return $this->coordinator_details['account_number'] ?? null;
+    }
+
+    /**
      * Get daily attendance as array
      */
     public function getDailyAttendanceAttribute()

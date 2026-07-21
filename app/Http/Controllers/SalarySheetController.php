@@ -246,7 +246,10 @@ class SalarySheetController extends Controller
                     $coordinatorDetails = [
                         'coordinator_id' => $coordinator->coordinator_id ?? $rowData['coordinator_id'],
                         'current_coordinator' => $coordinator->coordinator_name ?? 'Unknown',
-                        'amount' => (float) ($rowData['coordination_fee'] ?? 0)
+                        'amount' => (float) ($rowData['coordination_fee'] ?? 0),
+                        'bank_name' => $coordinator->bank_name ?? null,
+                        'bank_branch_name' => $coordinator->bank_branch_name ?? null,
+                        'account_number' => $coordinator->account_number ?? null,
                     ];
                 }
 
@@ -543,7 +546,10 @@ class SalarySheetController extends Controller
                         $coordinatorDetails = [
                             'coordinator_id' => $coord->coordinator_id ?? $rowData['coordinator_id'],
                             'current_coordinator' => $coord->coordinator_name ?? $rowData['current_coordinator'] ?? 'Unknown',
-                            'amount' => (float) ($rowData['coordination_fee'] ?? 0)
+                            'amount' => (float) ($rowData['coordination_fee'] ?? 0),
+                            'bank_name' => $coord->bank_name ?? null,
+                            'bank_branch_name' => $coord->bank_branch_name ?? null,
+                            'account_number' => $coord->account_number ?? null,
                         ];
                     }
                     EmployersSalarySheetItem::create([
@@ -838,7 +844,10 @@ class SalarySheetController extends Controller
                     $coordinatorDetails = [
                         'coordinator_id' => $coordinator->coordinator_id ?? $rowData['coordinator_id'],
                         'current_coordinator' => $coordinator->coordinator_name ?? $rowData['current_coordinator'] ?? 'Unknown',
-                        'amount' => (float) ($rowData['coordination_fee'] ?? 0)
+                        'amount' => (float) ($rowData['coordination_fee'] ?? 0),
+                        'bank_name' => $coordinator->bank_name ?? null,
+                        'bank_branch_name' => $coordinator->bank_branch_name ?? null,
+                        'account_number' => $coordinator->account_number ?? null,
                     ];
                 }
 
