@@ -91,10 +91,15 @@ class SalarySheetController extends Controller
 
         $sortBy    = in_array(request('sort_by'), ['created_at', 'sheet_no', 'status']) ? request('sort_by') : 'created_at';
         $sortOrder = request('sort_order', 'desc') === 'asc' ? 'asc' : 'desc';
-        $query->orderBy('job_id')->orderBy($sortBy, $sortOrder);
+        $query->orderBy($sortBy, $sortOrder);
 
         $allSheets = $query->get();
-        $grouped   = $allSheets->groupBy('job_id');
+
+        // Group by job, then order the job groups themselves by their most recently
+        // created salary sheet — so a job with a brand-new sheet floats to the top,
+        // regardless of how old the job itself is.
+        $grouped = $allSheets->groupBy('job_id')
+            ->sortByDesc(fn ($sheets) => $sheets->max('created_at'));
 
         return view('admin.salary-sheets.index', compact('grouped', 'stats', 'isReporter'));
     }
