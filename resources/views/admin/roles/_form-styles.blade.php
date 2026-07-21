@@ -14,7 +14,7 @@
 .rf-error { font-size:.72rem; color:#dc2626; margin:0; }
 
 .rf-perm-scroll { max-height:500px; overflow-y:auto; display:flex; flex-direction:column; gap:.5rem; }
-.rf-perm-group { border:1px solid #e5e7eb; border-radius:6px; overflow:hidden; }
+.rf-perm-group { border:1px solid #e5e7eb; border-radius:6px; overflow:hidden; flex-shrink:0; }
 .rf-perm-group-header { display:flex; align-items:center; justify-content:space-between; padding:.45rem .75rem; background:#f8fafc; border-bottom:1px solid #e5e7eb; }
 .rf-perm-group-title { font-size:.72rem; font-weight:700; color:#374151; text-transform:uppercase; letter-spacing:.05em; }
 .rf-toggle-all { font-size:.68rem; font-weight:600; color:#3b82f6; cursor:pointer; background:none; border:none; padding:0; }
