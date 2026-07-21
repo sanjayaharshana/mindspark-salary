@@ -3,39 +3,26 @@
 namespace App\Mail;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\URL;
 use App\Models\SalarySheet;
 
-class SalarySheetCompleteNotification extends Mailable
+class SalarySheetDeclinedNotification extends Mailable
 {
     use Queueable, SerializesModels;
 
     public $salarySheet;
-    public $approveUrl;
-    public $declineUrl;
+    public $reason;
 
     /**
      * Create a new message instance.
      */
-    public function __construct(SalarySheet $salarySheet)
+    public function __construct(SalarySheet $salarySheet, string $reason)
     {
         $this->salarySheet = $salarySheet;
-        // Signed URLs valid for 7 days — no login required
-        $this->approveUrl = URL::signedRoute(
-            'salary-sheets.email-approve',
-            ['salarySheet' => $salarySheet->id],
-            now()->addDays(7)
-        );
-        $this->declineUrl = URL::signedRoute(
-            'salary-sheets.email-decline',
-            ['salarySheet' => $salarySheet->id],
-            now()->addDays(7)
-        );
+        $this->reason = $reason;
     }
 
     /**
@@ -44,7 +31,7 @@ class SalarySheetCompleteNotification extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Salary Sheet Ready for Review - ' . $this->salarySheet->sheet_no,
+            subject: 'Salary Sheet Declined - ' . $this->salarySheet->sheet_no,
         );
     }
 
@@ -54,7 +41,7 @@ class SalarySheetCompleteNotification extends Mailable
     public function content(): Content
     {
         return new Content(
-            view: 'emails.salary-sheet-complete',
+            view: 'emails.salary-sheet-declined',
         );
     }
 

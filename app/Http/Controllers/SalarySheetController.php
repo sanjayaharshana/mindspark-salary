@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use App\Mail\SalarySheetCompleteNotification;
 use App\Mail\SalarySheetApprovedNotification;
+use App\Mail\SalarySheetDeclinedNotification;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
@@ -1111,6 +1112,57 @@ class SalarySheetController extends Controller
     }
 
     /**
+     * Decline a salary sheet via a signed URL from email.
+     * No login required — the signed URL is the authentication.
+     * GET shows a reason form; POST (submitted back to the same signed URL) processes the decline
+     * and notifies the job's officer and all admins with the reason.
+     */
+    public function declineViaEmail(Request $request, SalarySheet $salarySheet)
+    {
+        $salarySheet->load(['job.client', 'job.officer', 'job.reporter']);
+
+        if ($salarySheet->status !== 'complete') {
+            return view('emails.decline-result', [
+                'success'     => false,
+                'salarySheet' => $salarySheet,
+                'message'     => 'This salary sheet has already been processed.',
+                'subMessage'  => 'Current status: ' . ucfirst($salarySheet->status),
+            ]);
+        }
+
+        if ($request->isMethod('get')) {
+            return view('emails.decline-form', [
+                'salarySheet' => $salarySheet,
+                'actionUrl'   => $request->fullUrl(),
+            ]);
+        }
+
+        $validated = $request->validate([
+            'reason' => 'required|string|max:2000',
+        ]);
+
+        $salarySheet->update([
+            'status'         => 'reject',
+            'decline_reason' => $validated['reason'],
+        ]);
+
+        Log::info('Salary sheet declined via email link:', [
+            'sheet_no'   => $salarySheet->sheet_no,
+            'reason'     => $validated['reason'],
+            'declined_at' => now(),
+        ]);
+
+        $this->sendDeclineNotificationToOfficerAndAdmin($salarySheet, $validated['reason']);
+
+        return view('emails.decline-result', [
+            'success'     => true,
+            'salarySheet' => $salarySheet,
+            'message'     => 'Salary sheet declined.',
+            'subMessage'  => 'Sheet ' . $salarySheet->sheet_no . ' has been marked as Rejected. The officer and admin have been notified with your reason.',
+        ]);
+    }
+
+    /**
      * Send email notification when salary sheet status is complete.
      *
      * Resolution order for the recipient:
@@ -1261,6 +1313,73 @@ class SalarySheetController extends Controller
             Log::info('=== SALARY SHEET APPROVAL EMAIL NOTIFICATION END ===');
         } catch (\Exception $e) {
             Log::error('Failed to send salary sheet approval notification', [
+                'sheet_no' => $salarySheet->sheet_no ?? null,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+        }
+    }
+
+    /**
+     * Send email notification when a salary sheet is declined by the reporter.
+     * Sends to: job's assigned officer AND all admin users.
+     */
+    private function sendDeclineNotificationToOfficerAndAdmin(SalarySheet $salarySheet, string $reason)
+    {
+        try {
+            $mailDriver = config('mail.default');
+
+            if ($mailDriver === 'log') {
+                Log::warning('Mail driver is set to "log" - emails will be logged but not actually sent. Change MAIL_MAILER to "smtp" in .env to send real emails.');
+            }
+
+            Log::info('=== SALARY SHEET DECLINE EMAIL NOTIFICATION START ===');
+
+            $salarySheet->load(['job.officer']);
+
+            $recipientEmails = [];
+
+            // 1. All admin users
+            $admins = User::role('admin')->get();
+            foreach ($admins as $admin) {
+                if ($admin->email) {
+                    $recipientEmails[$admin->email] = true;
+                }
+            }
+
+            // 2. Job's assigned officer (if any)
+            if ($salarySheet->job && $salarySheet->job->officer) {
+                $officer = $salarySheet->job->officer;
+                if ($officer->email) {
+                    $recipientEmails[$officer->email] = true;
+                }
+            }
+
+            $toAddresses = array_keys($recipientEmails);
+
+            if (empty($toAddresses)) {
+                Log::warning('No recipients for salary sheet decline notification', [
+                    'sheet_no' => $salarySheet->sheet_no,
+                    'job_id' => $salarySheet->job_id,
+                ]);
+                return;
+            }
+
+            Log::info('Sending salary sheet decline notification to officer and admins', [
+                'sheet_no' => $salarySheet->sheet_no,
+                'job_number' => $salarySheet->job?->job_number,
+                'recipients' => $toAddresses,
+            ]);
+
+            Mail::to($toAddresses)->queue(new SalarySheetDeclinedNotification($salarySheet, $reason));
+
+            Log::info('Salary sheet decline notification queued', [
+                'sheet_no' => $salarySheet->sheet_no,
+                'recipient_count' => count($toAddresses),
+            ]);
+            Log::info('=== SALARY SHEET DECLINE EMAIL NOTIFICATION END ===');
+        } catch (\Exception $e) {
+            Log::error('Failed to send salary sheet decline notification', [
                 'sheet_no' => $salarySheet->sheet_no ?? null,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

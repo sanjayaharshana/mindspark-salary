@@ -54,6 +54,12 @@ Route::get('/salary-sheets/{salarySheet}/email-approve', [SalarySheetController:
     ->name('salary-sheets.email-approve')
     ->middleware('signed');
 
+// Email-based salary sheet decline (no login required, signed URL only).
+// GET renders a reason form; POST (submitted back to the same signed URL) processes the decline.
+Route::match(['GET', 'POST'], '/salary-sheets/{salarySheet}/email-decline', [SalarySheetController::class, 'declineViaEmail'])
+    ->name('salary-sheets.email-decline')
+    ->middleware('signed');
+
 // Admin routes
 Route::middleware('auth')->group(function () {
     Route::get('/admin/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');

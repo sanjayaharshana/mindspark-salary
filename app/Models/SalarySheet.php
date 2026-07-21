@@ -20,6 +20,7 @@ class SalarySheet extends Model
         'start_date',
         'end_date',
         'notes',
+        'decline_reason',
         'created_by',
     ];
 

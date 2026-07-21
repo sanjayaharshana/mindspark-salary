@@ -259,6 +259,21 @@
                     </div>
                 </div>
 
+                <!-- Decline Reason -->
+                @if($salarySheet->status === 'reject' && $salarySheet->decline_reason)
+                <div class="info-card" style="background:#fef2f2; border-color:#fecaca;">
+                    <h4 class="card-title" style="color:#991b1b;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="15" y1="9" x2="9" y2="15"></line>
+                            <line x1="9" y1="9" x2="15" y2="15"></line>
+                        </svg>
+                        Decline Reason
+                    </h4>
+                    <div class="notes-content" style="color:#991b1b;">{{ $salarySheet->decline_reason }}</div>
+                </div>
+                @endif
+
                 <!-- Notes Section -->
                 @if($salarySheet->notes)
                 <div class="info-card">

@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Salary Sheet Ready for Review</title>
+    <title>Salary Sheet Declined</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -19,7 +19,7 @@
             background-color: #ffffff;
         }
         .email-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
             padding: 2rem;
             text-align: center;
             color: #ffffff;
@@ -33,8 +33,8 @@
             padding: 2rem;
         }
         .info-box {
-            background-color: #f8fafc;
-            border-left: 4px solid #3b82f6;
+            background-color: #fef2f2;
+            border-left: 4px solid #ef4444;
             padding: 1rem;
             margin: 1.5rem 0;
             border-radius: 0.375rem;
@@ -45,7 +45,28 @@
             margin-bottom: 0.5rem;
         }
         .info-box span {
-            color: #6b7280;
+            color: #991b1b;
+            font-weight: 600;
+        }
+        .reason-box {
+            background-color: #fffbeb;
+            border: 1px solid #fcd34d;
+            padding: 1rem 1.25rem;
+            margin: 1.5rem 0;
+            border-radius: 0.5rem;
+        }
+        .reason-box strong {
+            color: #92400e;
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .reason-box p {
+            margin: 0;
+            color: #78350f;
+            white-space: pre-wrap;
         }
         .button-container {
             text-align: center;
@@ -54,64 +75,15 @@
         .button {
             display: inline-block;
             padding: 0.75rem 2rem;
-            background-color: #3b82f6;
-            color: #ffffff;
-            text-decoration: none;
-            border-radius: 0.5rem;
-            font-weight: 600;
-            margin: 0 0.5rem;
-        }
-        .button-approve {
-            display: inline-block;
-            padding: 0.75rem 2.5rem;
-            background-color: #10b981;
-            color: #ffffff;
-            text-decoration: none;
-            border-radius: 0.5rem;
-            font-weight: 700;
-            font-size: 1rem;
-            margin: 0 0.5rem;
-        }
-        .button-decline {
-            display: inline-block;
-            padding: 0.75rem 2.5rem;
             background-color: #ef4444;
             color: #ffffff;
             text-decoration: none;
             border-radius: 0.5rem;
-            font-weight: 700;
-            font-size: 1rem;
-            margin: 0 0.5rem;
+            font-weight: 600;
+            transition: background-color 0.2s;
         }
-        .approve-section {
-            background: #f0fdf4;
-            border: 2px solid #10b981;
-            border-radius: 0.75rem;
-            padding: 1.5rem;
-            text-align: center;
-            margin: 1.5rem 0;
-        }
-        .approve-section h3 {
-            color: #065f46;
-            margin: 0 0 0.5rem 0;
-            font-size: 1.1rem;
-        }
-        .approve-section p {
-            color: #047857;
-            margin: 0 0 1rem 0;
-            font-size: 0.9rem;
-        }
-        .decision-buttons {
-            display: flex;
-            justify-content: center;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-        }
-        .link-note {
-            color: #9ca3af;
-            font-size: 0.75rem;
-            margin-top: 0.75rem;
-            word-break: break-all;
+        .button:hover {
+            background-color: #b91c1c;
         }
         .email-footer {
             background-color: #f9fafb;
@@ -143,17 +115,22 @@
 <body>
     <div class="email-container">
         <div class="email-header">
-            <h1>Salary Sheet Ready for Review</h1>
+            <h1>Salary Sheet Declined</h1>
         </div>
 
         <div class="email-body">
             <p>Hello,</p>
 
-            <p>A new salary sheet has been created and is ready for your review.</p>
+            <p>A salary sheet has been declined by the reporter and needs your attention.</p>
 
             <div class="info-box">
                 <strong>Sheet Number:</strong>
                 <span>{{ $salarySheet->sheet_no }}</span>
+            </div>
+
+            <div class="reason-box">
+                <strong>Reason for Decline</strong>
+                <p>{{ $reason }}</p>
             </div>
 
             <table class="details-table">
@@ -177,36 +154,28 @@
                 </tr>
                 <tr>
                     <td>Status:</td>
-                    <td><strong style="color: #10b981;">{{ ucfirst($salarySheet->status) }}</strong></td>
+                    <td><strong style="color: #dc2626;">Rejected</strong></td>
                 </tr>
                 <tr>
-                    <td>Created Date:</td>
-                    <td>{{ $salarySheet->created_at->format('F d, Y') }}</td>
+                    <td>Declined Date:</td>
+                    <td>{{ now()->format('F d, Y') }}</td>
                 </tr>
+                @if($salarySheet->job && $salarySheet->job->reporter)
+                <tr>
+                    <td>Declined By:</td>
+                    <td>{{ $salarySheet->job->reporter->name }}</td>
+                </tr>
+                @endif
             </table>
-
-            <div class="approve-section">
-                <h3>Review This Salary Sheet</h3>
-                <p>Click a button below to approve or decline this salary sheet. No login is required.</p>
-                <div class="decision-buttons">
-                    <a href="{{ $approveUrl }}" class="button-approve">
-                        Approve Salary Sheet
-                    </a>
-                    <a href="{{ $declineUrl }}" class="button-decline">
-                        Decline Salary Sheet
-                    </a>
-                </div>
-                <p class="link-note">These links are valid for 7 days. Declining will ask you for a reason and notify the officer and admin.</p>
-            </div>
 
             <div class="button-container">
                 <a href="{{ route('admin.salary-sheets.show', $salarySheet) }}" class="button">
-                    View Full Details
+                    View Salary Sheet
                 </a>
             </div>
 
-            <p style="color: #6b7280; font-size: 0.875rem; margin-top: 1rem;">
-                The salary sheet is in <strong>"Complete"</strong> status and awaiting your approval. Click "Approve Salary Sheet" above to confirm.
+            <p style="color: #6b7280; font-size: 0.875rem; margin-top: 2rem;">
+                Please review the reason above, make the necessary corrections, and resubmit the salary sheet.
             </p>
         </div>
 
@@ -217,4 +186,3 @@
     </div>
 </body>
 </html>
-
