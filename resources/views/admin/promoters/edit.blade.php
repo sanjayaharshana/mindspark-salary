@@ -46,13 +46,13 @@
                 </div>
                 <div class="pf-row">
                     <div class="pf-group">
-                        <label class="pf-label">Identity Card No. <span class="pf-req">*</span></label>
-                        <input class="pf-input @error('identity_card_no') pf-invalid @enderror" type="text" name="identity_card_no" value="{{ old('identity_card_no', $promoter->identity_card_no) }}" placeholder="NIC number" required>
+                        <label class="pf-label">Identity Card No.</label>
+                        <input class="pf-input @error('identity_card_no') pf-invalid @enderror" type="text" name="identity_card_no" value="{{ old('identity_card_no', $promoter->identity_card_no) }}" placeholder="NIC number (optional)">
                         @error('identity_card_no')<div class="pf-error">{{ $message }}</div>@enderror
                     </div>
                     <div class="pf-group">
-                        <label class="pf-label">Phone No. <span class="pf-req">*</span></label>
-                        <input class="pf-input @error('phone_no') pf-invalid @enderror" type="text" name="phone_no" value="{{ old('phone_no', $promoter->phone_no) }}" placeholder="Mobile number" required>
+                        <label class="pf-label">Phone No.</label>
+                        <input class="pf-input @error('phone_no') pf-invalid @enderror" type="text" name="phone_no" value="{{ old('phone_no', $promoter->phone_no) }}" placeholder="Mobile number (optional)">
                         @error('phone_no')<div class="pf-error">{{ $message }}</div>@enderror
                     </div>
                 </div>

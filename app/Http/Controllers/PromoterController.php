@@ -143,11 +143,18 @@ class PromoterController extends Controller
      */
     public function store(Request $request)
     {
+        // Treat blank input as "not provided" so the unique check on identity_card_no
+        // doesn't collide across multiple promoters left without one.
+        $request->merge([
+            'identity_card_no' => $request->identity_card_no ?: null,
+            'phone_no' => $request->phone_no ?: null,
+        ]);
+
         $validator = Validator::make($request->all(), [
             'position_id' => 'nullable|exists:promoter_positions,id',
             'promoter_name' => 'required|string|max:255',
-            'identity_card_no' => 'required|string|max:20|unique:promoters,identity_card_no',
-            'phone_no' => 'required|string|max:20',
+            'identity_card_no' => 'nullable|string|max:20|unique:promoters,identity_card_no',
+            'phone_no' => 'nullable|string|max:20',
             'bank_name' => 'required|string|max:255',
             'bank_branch_name' => 'required|string|max:255',
             'bank_account_number' => 'required|string|max:50',
@@ -288,11 +295,18 @@ class PromoterController extends Controller
      */
     public function update(Request $request, Promoter $promoter)
     {
+        // Treat blank input as "not provided" so the unique check on identity_card_no
+        // doesn't collide across multiple promoters left without one.
+        $request->merge([
+            'identity_card_no' => $request->identity_card_no ?: null,
+            'phone_no' => $request->phone_no ?: null,
+        ]);
+
         $validator = Validator::make($request->all(), [
             'position_id' => 'nullable|exists:promoter_positions,id',
             'promoter_name' => 'required|string|max:255',
-            'identity_card_no' => 'required|string|max:20|unique:promoters,identity_card_no,' . $promoter->id,
-            'phone_no' => 'required|string|max:20',
+            'identity_card_no' => 'nullable|string|max:20|unique:promoters,identity_card_no,' . $promoter->id,
+            'phone_no' => 'nullable|string|max:20',
             'bank_name' => 'required|string|max:255',
             'bank_branch_name' => 'required|string|max:255',
             'bank_account_number' => 'required|string|max:50',
