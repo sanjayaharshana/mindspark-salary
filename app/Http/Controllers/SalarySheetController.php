@@ -1524,6 +1524,9 @@ class SalarySheetController extends Controller
         $headers[] = 'Net Amount';
         $headers[] = 'Coordinator';
         $headers[] = 'Coordination Fee';
+        $headers[] = 'Coordinator Bank Name';
+        $headers[] = 'Coordinator Bank Branch';
+        $headers[] = 'Coordinator Bank Account';
 
         // Write headers
         $colIndex = 1;
@@ -1543,8 +1546,8 @@ class SalarySheetController extends Controller
             $colIndex++;
         }
 
-        // Calculate total columns (Item, Location, Position, Promoter, Bank Name, Bank Branch, Bank Account + Attendance dates + Total Days, Att Amount, Base Amount + Allowances + Expenses, Hold, Net, Coordinator, Coord Fee)
-        $totalColumns = 7 + count($allAttendanceDates) + 3 + count($dynamicAllowances) + 4;
+        // Total columns matches the header list exactly, so it stays correct as columns are added/removed.
+        $totalColumns = count($headers);
         $lastColLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($totalColumns);
 
         // Data rows
@@ -1619,6 +1622,15 @@ class SalarySheetController extends Controller
 
             $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex++);
             $sheet->setCellValue($colLetter . $row, number_format($item->coordinator_details['amount'] ?? 0, 2));
+
+            $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex++);
+            $sheet->setCellValue($colLetter . $row, $item->coordinator_bank_name ?? 'N/A');
+
+            $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex++);
+            $sheet->setCellValue($colLetter . $row, $item->coordinator_bank_branch ?? 'N/A');
+
+            $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex++);
+            $sheet->setCellValue($colLetter . $row, $item->coordinator_account_number ?? 'N/A');
 
             // Apply borders to data row
             for ($c = 1; $c <= $totalColumns; $c++) {
