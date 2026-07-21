@@ -1273,7 +1273,7 @@ class SalarySheetController extends Controller
 
             Log::info('=== SALARY SHEET APPROVAL EMAIL NOTIFICATION START ===');
 
-            $salarySheet->load(['job.officer']);
+            $salarySheet->load(['job.officer', 'job.reporter']);
 
             $recipientEmails = [];
 
@@ -1340,7 +1340,7 @@ class SalarySheetController extends Controller
 
             Log::info('=== SALARY SHEET DECLINE EMAIL NOTIFICATION START ===');
 
-            $salarySheet->load(['job.officer']);
+            $salarySheet->load(['job.officer', 'job.reporter']);
 
             $recipientEmails = [];
 

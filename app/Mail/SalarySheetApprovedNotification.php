@@ -30,8 +30,16 @@ class SalarySheetApprovedNotification extends Mailable
      */
     public function envelope(): Envelope
     {
+        $reporterName = $this->approvedBy?->name
+            ?? $this->salarySheet->job?->reporter?->name
+            ?? null;
+
+        $subject = $reporterName
+            ? "Salary Sheet Approved by {$reporterName} - {$this->salarySheet->sheet_no}"
+            : "Salary Sheet Approved - {$this->salarySheet->sheet_no}";
+
         return new Envelope(
-            subject: 'Salary Sheet Approved - ' . $this->salarySheet->sheet_no,
+            subject: $subject,
         );
     }
 

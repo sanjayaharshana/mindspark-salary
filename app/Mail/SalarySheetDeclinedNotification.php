@@ -30,8 +30,14 @@ class SalarySheetDeclinedNotification extends Mailable
      */
     public function envelope(): Envelope
     {
+        $reporterName = $this->salarySheet->job?->reporter?->name;
+
+        $subject = $reporterName
+            ? "Salary Sheet Declined by {$reporterName} - {$this->salarySheet->sheet_no}"
+            : "Salary Sheet Declined - {$this->salarySheet->sheet_no}";
+
         return new Envelope(
-            subject: 'Salary Sheet Declined - ' . $this->salarySheet->sheet_no,
+            subject: $subject,
         );
     }
 
