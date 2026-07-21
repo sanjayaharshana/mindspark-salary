@@ -2811,9 +2811,13 @@ function updateCoordinatorDisplay(rowNum, selectElement) {
     const bankNameInput = document.getElementById(`coordinatorBankName-${rowNum}`);
     const bankBranchInput = document.getElementById(`coordinatorBankBranch-${rowNum}`);
     const bankAccountInput = document.getElementById(`coordinatorBankAccount-${rowNum}`);
+    // Accept either field name a row might use, and never throw if a row is missing it.
+    const coordinatorNameInput = row.querySelector(
+        `input[name="rows[${rowNum}][current_coordinator]"], input[name="rows[${rowNum}][coordinator_name]"]`
+    );
 
     if (selectedOption && selectedOption.dataset.name) {
-        row.querySelector('input[name="rows[' + rowNum + '][current_coordinator]"]').value = selectedOption.dataset.name;
+        if (coordinatorNameInput) coordinatorNameInput.value = selectedOption.dataset.name;
 
         // Auto-fill the coordinator's bank details
         const selectedCoordinator = coordinators.find(c => c.id == selectElement.value);
@@ -2830,7 +2834,7 @@ function updateCoordinatorDisplay(rowNum, selectElement) {
         // Trigger net calculation since coordinator fee changed
         calculateRowNet(rowNum);
     } else {
-        row.querySelector('input[name="rows[' + rowNum + '][current_coordinator]"]').value = '';
+        if (coordinatorNameInput) coordinatorNameInput.value = '';
 
         // Clear coordinator bank details when no coordinator selected
         if (bankNameInput) bankNameInput.value = '';
@@ -4486,7 +4490,7 @@ function loadSalarySheetAsRow(sheet, index) {
                         ${coordinator ? `<option value="${coordinator.id}" selected data-name="${coordinator.coordinator_name}">${coordinator.coordinator_id}</option>` : ''}
                     </select>
                 </div>
-                <input type="text" class="table-input-small table-input-readonly" name="rows[${index}][coordinator_name]" readonly value="${coordinatorName}">
+                <input type="text" class="table-input-small table-input-readonly" name="rows[${index}][current_coordinator]" readonly value="${coordinatorName}">
                 <input type="number" step="0.01" class="table-input-small" name="rows[${index}][coordination_fee]" title="Coordination Fee (Auto-calculated, but editable)" oninput="markAsCustom(this, 'coordination_fee'); calculateRowNet(${index})" value="${sheet.coordination_fee || 0}" ${sheet.coordination_fee ? 'data-custom-coordination-fee="true" data-loaded-from-db="true"' : ''}>
             </div>
         </td>
