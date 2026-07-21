@@ -724,7 +724,7 @@ body.sc-fullscreen .sc-status-btn { height: 29px; font-size: .78rem; padding: 0 
 
     {{-- Save / Update actions --}}
     @if(isset($editSalarySheet))
-        <button type="button" class="sc-btn sc-btn-solid" onclick="submitUpdateSalarySheet()">
+        <button type="button" class="sc-btn sc-btn-solid" onclick="saveSalarySheet()">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
             Update Sheet
         </button>
@@ -6148,7 +6148,7 @@ document.addEventListener('click', function(e) {
 <div id="salarySheetSaveModal" class="modal" style="display: none;">
     <div class="modal-content" style="max-width: 600px; width: 90%;">
         <div class="modal-header">
-            <h3>Save Salary Sheet</h3>
+            <h3>{{ isset($editSalarySheet) ? 'Update Salary Sheet' : 'Save Salary Sheet' }}</h3>
             <span class="close" id="salarySheetSaveCloseBtn">&times;</span>
         </div>
         <div class="modal-body">
@@ -6179,11 +6179,9 @@ document.addEventListener('click', function(e) {
                             <option value="approve">Approve</option>
                             <option value="paid">Paid</option>
                         </select>
-                        @if(!isset($editSalarySheet))
                         <p style="margin-top:0.4rem;font-size:0.78rem;color:#10b981;">
                             &#9432; Saving as <strong>Complete</strong> will email the reporter for approval.
                         </p>
-                        @endif
                     </div>
                 </div>
 
@@ -6216,74 +6214,13 @@ document.addEventListener('click', function(e) {
 
             <div style="margin-top: 2rem; display: flex; justify-content: flex-end; gap: 1rem;">
                 <button type="button" class="btn btn-secondary" onclick="closeSalarySheetSaveModal()">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="confirmSaveSalarySheet()">Save Salary Sheet</button>
+                <button type="button" class="btn btn-primary" onclick="confirmSaveSalarySheet()">{{ isset($editSalarySheet) ? 'Update Salary Sheet' : 'Save Salary Sheet' }}</button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-window.__reportersList = @json(($reporters ?? collect())->map(fn($r) => ['id' => $r->id, 'name' => $r->name])->values());
-
-// Used by the Edit page's "Update Sheet" button, which submits directly (no status/notes modal).
-// When completing a sheet for a job with no reporter assigned, ask which reporter to notify.
-function submitUpdateSalarySheet() {
-    const form = document.getElementById('salarySheetForm');
-    const statusHidden = document.getElementById('status_hidden');
-    const status = statusHidden ? statusHidden.value : '';
-
-    if (status !== 'complete') {
-        form.submit();
-        return;
-    }
-
-    const jobHidden = document.getElementById('job_id');
-    const jobReporterId = jobHidden ? (jobHidden.dataset.reporterId || '') : '';
-
-    if (jobReporterId) {
-        // Job already has a reporter — submit as-is, backend will notify them.
-        form.submit();
-        return;
-    }
-
-    const options = (window.__reportersList || [])
-        .map(r => `<option value="${r.id}">${r.name}</option>`)
-        .join('');
-
-    Swal.fire({
-        icon: 'warning',
-        title: 'Reporter Not Assigned',
-        html: `
-            <p style="text-align:left;color:#374151;font-size:0.9rem;margin-bottom:0.75rem;">
-                Cannot send reporter approval mail because the job reporter is not assigned.
-                Select a reporter to notify, or save without sending the approval email.
-            </p>
-            <select id="swalReporterSelect" class="swal2-select" style="width:100%;">
-                <option value="">-- Save without sending mail --</option>
-                ${options}
-            </select>
-        `,
-        showCancelButton: true,
-        confirmButtonText: 'Save',
-        cancelButtonText: 'Cancel',
-        preConfirm: () => document.getElementById('swalReporterSelect').value
-    }).then((result) => {
-        if (!result.isConfirmed) return;
-
-        const reporterId = result.value;
-        if (reporterId) {
-            const existing = form.querySelector('input[name="reporter_id"]');
-            if (existing) existing.remove();
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = 'reporter_id';
-            input.value = reporterId;
-            form.appendChild(input);
-        }
-        form.submit();
-    });
-}
-
 // Salary Sheet Save Modal Functions
 function openSalarySheetSaveModal() {
     document.getElementById('salarySheetSaveModal').style.display = 'block';
@@ -6500,8 +6437,8 @@ function proceedSaveSalarySheet(jobStatus, salarySheetStatus, notes, reporterId)
     // Show confirmation
     Swal.fire({
         icon: 'info',
-        title: 'Saving Salary Sheet',
-        text: `Saving with Job Status: ${jobStatus} and Salary Sheet Status: ${salarySheetStatus}`,
+        title: isEditMode ? 'Updating Salary Sheet' : 'Saving Salary Sheet',
+        text: `${isEditMode ? 'Updating' : 'Saving'} with Job Status: ${jobStatus} and Salary Sheet Status: ${salarySheetStatus}`,
         showConfirmButton: false,
         timer: 1500
     });
