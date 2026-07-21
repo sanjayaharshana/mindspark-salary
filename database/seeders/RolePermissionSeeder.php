@@ -117,6 +117,11 @@ class RolePermissionSeeder extends Seeder
             'delete settings',
             'export settings',
             'import settings',
+
+            // Database Backup Management
+            'view backups',
+            'run backups',
+            'download backups',
         ];
 
         foreach ($permissions as $permission) {

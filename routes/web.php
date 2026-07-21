@@ -16,6 +16,7 @@ use App\Http\Controllers\AllowanceController;
 use App\Http\Controllers\ReporterController;
 use App\Http\Controllers\OfficerController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\BackupController;
 use App\Http\Controllers\LanguageController;
 
 // Public routes
@@ -128,6 +129,11 @@ Route::middleware('auth')->group(function () {
     Route::get('admin/settings/search', [SettingsController::class, 'search'])->name('admin.settings.search');
     Route::get('admin/settings/export', [SettingsController::class, 'export'])->name('admin.settings.export');
     Route::post('admin/settings/import', [SettingsController::class, 'import'])->name('admin.settings.import');
+
+    // Database Backup Management routes
+    Route::get('admin/backups', [BackupController::class, 'index'])->name('admin.backups.index');
+    Route::post('admin/backups/run', [BackupController::class, 'run'])->name('admin.backups.run');
+    Route::get('admin/backups/{type}/{filename}/download', [BackupController::class, 'download'])->name('admin.backups.download');
 
     Route::post('admin/salary-sheet-enforce',[SalarySheetController::class,'enforce'])->name('admin.salary.enforce');
 

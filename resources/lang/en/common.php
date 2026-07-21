@@ -14,7 +14,8 @@ return [
     'reporters' => 'Reporters',
     'officers' => 'Officers',
     'settings' => 'Settings',
-    
+    'database_backups' => 'Database Backups',
+
     // Common Actions
     'create' => 'Create',
     'edit' => 'Edit',

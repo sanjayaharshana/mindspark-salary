@@ -1184,7 +1184,7 @@ class SalarySheetController extends Controller
 
             Log::info('=== SALARY SHEET COMPLETE EMAIL NOTIFICATION START ===');
 
-            $salarySheet->load(['job.client', 'job.reporter']);
+            $salarySheet->load(['job.client', 'job.officer', 'job.reporter', 'creator']);
             $job = $salarySheet->job;
 
             if (!$job) {

@@ -14,7 +14,8 @@ return [
     'reporters' => 'වාර්තාකරුවන්',
     'officers' => 'නිලධාරීන්',
     'settings' => 'සැකසුම්',
-    
+    'database_backups' => 'දත්ත සමුදාය උපස්ථ',
+
     // Common Actions
     'create' => 'නිර්මාණය',
     'edit' => 'සංස්කරණය',

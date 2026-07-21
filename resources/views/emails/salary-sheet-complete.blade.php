@@ -142,8 +142,15 @@
 </head>
 <body>
     <div class="email-container">
+        @php
+            $createdOfficerName = $salarySheet->creator->name
+                ?? ($salarySheet->job->officer->name ?? null);
+        @endphp
         <div class="email-header">
             <h1>Salary Sheet Ready for Review</h1>
+            @if($createdOfficerName)
+                <p style="margin: 0.4rem 0 0 0; font-size: 0.95rem; opacity: 0.9;">Created by {{ $createdOfficerName }}</p>
+            @endif
         </div>
 
         <div class="email-body">
@@ -164,6 +171,10 @@
                 <tr>
                     <td>Job Name:</td>
                     <td>{{ $salarySheet->job->job_name ?? 'N/A' }}</td>
+                </tr>
+                <tr>
+                    <td>Created Officer:</td>
+                    <td>{{ $createdOfficerName ?? 'N/A' }}</td>
                 </tr>
                 @if($salarySheet->job && $salarySheet->job->client)
                 <tr>
