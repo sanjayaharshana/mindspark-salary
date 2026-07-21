@@ -632,6 +632,7 @@
                     <th rowspan="2">Net Amount</th>
                     <th rowspan="2">Coordinator</th>
                     <th rowspan="2">Coordination Fee</th>
+                    <th rowspan="2">Coordinator Bank Details</th>
                 </tr>
                 <tr>
                     @foreach($allAttendanceDates as $date)
@@ -681,6 +682,14 @@
                     <td class="amount"><strong>Rs. {{ number_format($item->payment_data['net_amount'] ?? 0, 2) }}</strong></td>
                     <td>{{ $item->coordinator_details['current_coordinator'] ?? 'N/A' }}</td>
                     <td class="amount positive">Rs. {{ number_format($item->coordinator_details['amount'] ?? 0, 2) }}</td>
+                    @php
+                        $coordinatorBankLines = array_filter([
+                            $item->coordinator_bank_name,
+                            $item->coordinator_bank_branch,
+                            $item->coordinator_account_number,
+                        ]);
+                    @endphp
+                    <td>{!! $coordinatorBankLines ? implode('<br>', array_map('e', $coordinatorBankLines)) : 'N/A' !!}</td>
                 </tr>
                 @endforeach
             </tbody>
