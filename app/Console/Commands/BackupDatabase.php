@@ -52,7 +52,7 @@ class BackupDatabase extends Command
 
         $this->info('Dumping database...');
 
-        $process = new Process([
+        $args = [
             'mysqldump',
             '-h', $db['host'],
             '-P', (string) $db['port'],
@@ -60,11 +60,20 @@ class BackupDatabase extends Command
             '--single-transaction',
             '--quick',
             '--skip-lock-tables',
-            '--no-tablespaces',
-            '--set-gtid-purged=OFF',
-            '--result-file=' . $sqlPath,
-            $db['database'],
-        ]);
+        ];
+
+        // Not every mysqldump build supports these (e.g. MariaDB's client rejects
+        // --set-gtid-purged), so only pass flags the local binary actually recognizes.
+        foreach (['--no-tablespaces' => '--no-tablespaces', '--set-gtid-purged' => '--set-gtid-purged=OFF'] as $flagName => $flag) {
+            if ($this->mysqldumpSupports($flagName)) {
+                $args[] = $flag;
+            }
+        }
+
+        $args[] = '--result-file=' . $sqlPath;
+        $args[] = $db['database'];
+
+        $process = new Process($args);
 
         // Pass the password via env var so it never appears in the process list.
         if (!empty($db['password'])) {
@@ -114,6 +123,24 @@ class BackupDatabase extends Command
         $this->info('Done.');
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Whether the locally installed mysqldump binary recognizes a given flag.
+     * Cached per-process since --help is called for two flags per run.
+     */
+    private ?string $mysqldumpHelp = null;
+
+    private function mysqldumpSupports(string $flagName): bool
+    {
+        if ($this->mysqldumpHelp === null) {
+            $help = new Process(['mysqldump', '--help']);
+            $help->run();
+            // mysqldump exits non-zero for --help on some builds; the text is still on stdout.
+            $this->mysqldumpHelp = $help->getOutput();
+        }
+
+        return str_contains($this->mysqldumpHelp, $flagName);
     }
 
     /**
