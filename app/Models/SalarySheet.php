@@ -186,6 +186,14 @@ class SalarySheet extends Model
     }
 
     /**
+     * Grand total: net amount + dynamic allowances + coordination fee across all items
+     */
+    public function getGrandTotalAttribute()
+    {
+        return $this->total_amount + $this->total_allowances + $this->total_coordination_fee;
+    }
+
+    /**
      * Get all unique positions in this salary sheet
      */
     public function getPositionsAttribute()

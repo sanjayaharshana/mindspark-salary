@@ -264,6 +264,10 @@
                             <label>Total Coordination Fee</label>
                             <div class="amount">Rs. {{ number_format($salarySheet->total_coordination_fee, 2) }}</div>
                         </div>
+                        <div class="total-item total-item-grand">
+                            <label>Grand Total</label>
+                            <div class="amount net-salary">Rs. {{ number_format($salarySheet->grand_total, 2) }}</div>
+                        </div>
                     </div>
                 </div>
 
@@ -597,6 +601,17 @@
     background: white;
     border-radius: 0.4rem;
     border: 1px solid #e5e7eb;
+}
+
+.total-item-grand {
+    background: #fef2f2;
+    border: 2px solid #dc2626;
+    grid-column: 1 / -1;
+}
+
+.total-item-grand label {
+    font-weight: 700;
+    color: #991b1b;
 }
 
 .total-item label {
